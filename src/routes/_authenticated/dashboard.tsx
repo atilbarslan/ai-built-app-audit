@@ -124,7 +124,7 @@ function Dashboard() {
             {popular.map((p) => (
               <div key={p.name}>
                 <div className="flex justify-between text-sm"><span className="font-medium">{p.name}</span><span className="text-muted-foreground">{p.count} bookings · {money(p.revenue)}</span></div>
-                <div className="mt-1.5 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{ width: `${(p.count / popular[0].count) * 100}%` }} /></div>
+                <div className="mt-1.5 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{ width: `${(p.count / popular[0]!.count) * 100}%` }} /></div>
               </div>
             ))}
           </div>

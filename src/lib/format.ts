@@ -41,8 +41,8 @@ export function buildSlots(opts: {
   step?: number;
 }) {
   const { date, open, close, duration, busy, step = 15 } = opts;
-  const [oh, om] = open.split(":").map(Number);
-  const [ch, cm] = close.split(":").map(Number);
+  const [oh = 9, om = 0] = open.split(":").map(Number);
+  const [ch = 19, cm = 0] = close.split(":").map(Number);
   const start = new Date(date);
   start.setHours(oh, om, 0, 0);
   const end = new Date(date);

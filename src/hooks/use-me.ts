@@ -32,7 +32,7 @@ async function fetchMe(): Promise<Me | null> {
     .eq("active", true);
   let salon = owned ?? null;
   if (!salon && staffRows?.length) {
-    const r = await supabase.from("salons").select("*").eq("id", staffRows[0].salon_id).maybeSingle();
+    const r = await supabase.from("salons").select("*").eq("id", staffRows[0]!.salon_id).maybeSingle();
     salon = r.data ?? null;
   }
   const myStaff = staffRows?.find((s) => s.salon_id === salon?.id) ?? null;

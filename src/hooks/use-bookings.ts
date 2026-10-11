@@ -16,7 +16,7 @@ export type BookingRow = {
   staff: { id: string; name: string } | null;
 };
 
-export function useBookings(opts: { salonId: string; from: Date; to: Date; staffId?: string; includeCancelled?: boolean }) {
+export function useBookings(opts: { salonId: string; from: Date; to: Date; staffId?: string | undefined; includeCancelled?: boolean }) {
   const { salonId, from, to, staffId, includeCancelled } = opts;
   return useQuery({
     queryKey: ["bookings", salonId, from.toISOString(), to.toISOString(), staffId ?? "all", !!includeCancelled],

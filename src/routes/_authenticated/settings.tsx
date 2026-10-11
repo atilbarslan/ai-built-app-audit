@@ -50,18 +50,18 @@ function ServicesTab() {
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.from("services").insert({ salon_id: me.salon.id, name: f.name, price: Number(f.price || 0), duration_min: Number(f.duration || 30) });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setF({ name: "", price: "", duration: "30" });
     refresh();
   }
   async function update(id: string, patch: { active?: boolean }) {
     const { error } = await supabase.from("services").update(patch).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refresh();
   }
   async function remove(id: string) {
     const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refresh();
   }
 
@@ -97,14 +97,14 @@ function StaffTab() {
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.from("staff").insert({ salon_id: me.salon.id, name: f.name, email: f.email.trim().toLowerCase() || null });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setF({ name: "", email: "" });
     toast.success(f.email ? "Added. They can now sign up with that email to see their calendar." : "Added");
     refresh();
   }
   async function toggle(id: string, active: boolean) {
     const { error } = await supabase.from("staff").update({ active }).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refresh();
   }
 
@@ -151,11 +151,11 @@ function SalonTab() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (f.close_time <= f.open_time) return toast.error("Closing time must be after opening time");
+    if (f.close_time <= f.open_time) { toast.error("Closing time must be after opening time"); return; }
     setSaving(true);
     const { error } = await supabase.from("salons").update({ ...f, slug: slugify(f.slug), address: f.address || null, phone: f.phone || null }).eq("id", s.id);
     setSaving(false);
-    if (error) return toast.error(error.message.includes("duplicate") ? "That booking link is taken." : error.message);
+    if (error) { toast.error(error.message.includes("duplicate") ? "That booking link is taken." : error.message); return; }
     toast.success("Saved");
     qc.invalidateQueries({ queryKey: meQueryKey });
   }

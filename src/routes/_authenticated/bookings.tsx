@@ -47,7 +47,7 @@ function BookingsPage() {
 
   async function cancel(b: BookingRow) {
     const { error } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", b.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Booking cancelled");
     qc.invalidateQueries({ queryKey: ["bookings"] });
   }
@@ -134,7 +134,7 @@ function MoveDialog({ booking, onClose }: { booking: BookingRow; onClose: () => 
       .update({ staff_id: staffId, starts_at: t.toISOString(), ends_at: new Date(t.getTime() + duration * 60000).toISOString() })
       .eq("id", booking.id);
     setSaving(false);
-    if (error) return toast.error(error.message.includes("exclu") ? "That time overlaps another booking." : error.message);
+    if (error) { toast.error(error.message.includes("exclu") ? "That time overlaps another booking." : error.message); return; }
     toast.success(`Moved to ${fmtDay(t)} at ${fmtTime(t)}`);
     qc.invalidateQueries({ queryKey: ["bookings"] });
     onClose();

@@ -67,13 +67,13 @@ function CustomerPage() {
     e.preventDefault();
     if (!note.trim()) return;
     const { error } = await supabase.from("customer_notes").insert({ salon_id: me.salon.id, customer_id: id, body: note.trim(), author_name: me.myStaff?.name ?? null });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setNote("");
     qc.invalidateQueries({ queryKey: ["notes", id] });
   }
   async function delNote(nid: string) {
     const { error } = await supabase.from("customer_notes").delete().eq("id", nid);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["notes", id] });
   }
   async function runSummary() {
