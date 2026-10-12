@@ -40,12 +40,13 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
       await book(t, {
         salon: ids.salonA,
         service: ids.serviceA,
-        staff: ids.ownerStaffA,
-        starts: new Date(Date.now() + 2 * 864e5).toISOString(),
+        staff: ids.staffA1, // A1 has no seed booking -> collision-free slot
+        starts: new Date(Date.now() + 100 * 864e5).toISOString(),
         name: "HACKED NAME",
         phone: "+905551112233",
         email: "attacker@evil.test",
       });
+      await act(t, "A"); // read back as owner (anon cannot read customers)
       const [row] = await t.unsafe(
         `select name,email from public.customers where salon_id=$1 and phone='+905551112233'`,
         [ids.salonA],
