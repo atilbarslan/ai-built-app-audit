@@ -33,7 +33,7 @@
     { "level": "Informational", "meaning": "No practical security impact; recorded for completeness." }
   ],
   "designDecisions": [
-    "Owners and staff can place, move or cancel appointments outside published opening hours and on closed days. This is intentional: salons routinely take off-hours or day-off appointments, so the owner keeps full control of their own calendar. The public booking page that clients use is still held to the opening-hours, open-day and 21-day advance rules (see BH-01), and the system still prevents two appointments from overlapping on any path."
+    "Owners and staff can place, move or cancel appointments outside published opening hours and on closed days. This is a deliberate product choice for this app: salons routinely take off-hours or day-off appointments, so booking management inside the app keeps full control of the calendar. The public booking page that clients use is still held to the opening-hours, open-day and 21-day advance rules (see BH-01), and the system still prevents two appointments from overlapping on any path."
   ],
   "strengths": [
     "Each salon's data is isolated from every other salon's (verified by tests).",

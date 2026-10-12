@@ -87,13 +87,10 @@
     <ul><li>Each salon's data is isolated from every other salon's (verified by tests).</li><li>Anonymous visitors cannot read database tables directly; public actions go only through a small set of controlled functions.</li><li>Double-booking the same staff member at the same time is prevented by the database itself.</li><li>Prices on past bookings are snapshotted, so later price changes do not rewrite history.</li><li>The powerful server key never reaches the browser.</li><li>The AI features run as the signed-in user, so they cannot reach another salon's clients.</li></ul>
     <h3>Additional hardening applied</h3>
     <ul><li>Anonymous visitors had database-level table privileges by default, leaving the access rules as the only line of defence; those privileges were removed, so anonymous visitors can now use only the controlled public functions.</li><li>Phone numbers are normalised to one format so the same client is not stored twice.</li></ul>
-  </section>
-
-  
-  <section class="page">
+    
     <h2>Design decisions (intentional behaviour)</h2>
-    <p>Some behaviour that an automated scan might flag is deliberate. These are choices the salon owner made, not defects:</p>
-    <ul><li>Owners and staff can place, move or cancel appointments outside published opening hours and on closed days. This is intentional: salons routinely take off-hours or day-off appointments, so the owner keeps full control of their own calendar. The public booking page that clients use is still held to the opening-hours, open-day and 21-day advance rules (see BH-01), and the system still prevents two appointments from overlapping on any path.</li></ul>
+    <p>Some behaviour that an automated scan might flag is deliberate - product choices for this app, not defects:</p>
+    <ul><li>Owners and staff can place, move or cancel appointments outside published opening hours and on closed days. This is a deliberate product choice for this app: salons routinely take off-hours or day-off appointments, so booking management inside the app keeps full control of the calendar. The public booking page that clients use is still held to the opening-hours, open-day and 21-day advance rules (see BH-01), and the system still prevents two appointments from overlapping on any path.</li></ul>
   </section>
 
   

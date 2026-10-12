@@ -47,14 +47,12 @@ const rubricSection =
   </section>`
     : "";
 
-const designSection =
+const designBlock =
   d.designDecisions && d.designDecisions.length
     ? `
-  <section class="page">
     <h2>Design decisions (intentional behaviour)</h2>
-    <p>Some behaviour that an automated scan might flag is deliberate. These are choices the salon owner made, not defects:</p>
-    <ul>${d.designDecisions.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
-  </section>`
+    <p>Some behaviour that an automated scan might flag is deliberate - product choices for this app, not defects:</p>
+    <ul>${d.designDecisions.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`
     : "";
 
 const repoUrl = (d.meta.repoUrl || "").replace(/\/+$/, "");
@@ -180,9 +178,8 @@ const html = `<!doctype html>
     <ul>${d.strengths.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
     <h3>Additional hardening applied</h3>
     <ul>${d.hardening.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
+    ${designBlock}
   </section>
-
-  ${designSection}
 
   ${findingPages}
 

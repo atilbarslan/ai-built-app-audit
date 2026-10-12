@@ -82,7 +82,7 @@ With only `0000` applied, the finding tests go **red** (they prove the finding);
 
 **Latest test run:** 2026-10-12 - 42 tests, 41 passed, 1 skipped. The skipped test is a time-zone demonstration that is only meaningful when the machine's own zone differs from the salon's; it is skipped when they are the same, so it does not false-alarm.
 
-**What you can verify without running anything:** the schema fixes are in [`drizzle/migrations/0001_audit_hardening.sql`](drizzle/migrations/0001_audit_hardening.sql), the tests are in [`audit/tests/`](audit/tests), and each finding is a single commit on the [`lovable-original` -> `main`](https://github.com/atilbarslan/ai-built-app-audit/compare/lovable-original...main) diff. Re-running the suite reproduces the red/green evidence but needs your own throwaway Supabase project and the connection values above - no credentials are shipped in this repo, so the test counts cannot be reproduced from the repo alone. The Lovable scan screenshot is from the audit date (October 2026).
+**What you can verify without running anything:** the schema fixes are in [`drizzle/migrations/0001_audit_hardening.sql`](drizzle/migrations/0001_audit_hardening.sql), the tests are in [`audit/tests/`](audit/tests), and each fix is in its own commit (a few closely related findings share one) on the [`lovable-original` -> `main`](https://github.com/atilbarslan/ai-built-app-audit/compare/lovable-original...main) diff. Re-running the suite reproduces the red/green evidence but needs your own throwaway Supabase project and the connection values above - no credentials are shipped in this repo, so the test counts cannot be reproduced from the repo alone. The Lovable scan screenshot is from the audit date (October 2026).
 
 ## Reusable checklist
 
