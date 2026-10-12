@@ -10,7 +10,7 @@ The app itself is a capable TanStack Start + Supabase application: multi-salon, 
 
 ## What the audit found
 
-Lovable's own security scan reported **no issues**, and its report also notes that *"The scanner can't catch every possible risk"*:
+At the time of the audit (October 2026), Lovable's Deep security scan reported **no issues**; its report also notes that *"The scanner can't catch every possible risk"*:
 
 ![Lovable security scan: no issues found](docs/lovable-security-scan.png)
 
@@ -39,6 +39,8 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 | SEC-12 - auth behaviour (brute-force not throttled in the test project) | Low | Recommendation |
 | SE-05 - thin tests, some `any`, vendor lock-in | Low | Recommendation |
 | SEC-08 - RLS helper functions executable by anon | Info | Fixed |
+
+_ID prefixes: SE = software engineering (correctness and maintainability), SEC = security review, BH = abuse testing._
 
 ## What was done well
 
@@ -72,6 +74,19 @@ npx vitest run --config audit/vitest.config.ts                            # evid
 
 With only `0000` applied, the finding tests go **red** (they prove the finding); with `0001` applied they go **green** (they prove the fix).
 
+**Latest test run:** 2026-10-12 - 42 tests, 41 passed, 1 skipped. The skipped test is a time-zone demonstration that is only meaningful when the machine's own zone differs from the salon's; it is skipped when they are the same, so it does not false-alarm.
+
 ## Reusable checklist
 
 [`CHECKLIST.md`](CHECKLIST.md) - "what to check in an app generated from a single prompt", distilled from this audit.
+
+## About
+
+I review and harden apps built with AI app builders before launch.
+
+- [github.com/atilbarslan](https://github.com/atilbarslan)
+- [linkedin.com/in/atilbarslan](https://linkedin.com/in/atilbarslan)
+
+## License
+
+All rights reserved. Published for viewing and evaluation only.
