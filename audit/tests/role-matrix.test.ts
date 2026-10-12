@@ -128,8 +128,10 @@ afterAll(async () => {
 
 describe("SEC - access control role matrix (assertions)", () => {
   it("anon cannot read any base table directly (must go through public RPCs)", () => {
+    // After Item 11, anon has no table privileges at all -> hard deny ("✗");
+    // before that it was RLS-filtered ("·0"). Either way: no rows visible.
     for (const table of ["salons", "staff", "services", "customers", "bookings", "customer_notes"]) {
-      expect(matrix[table]["select(A)"].anon, `${table}`).toBe("·0");
+      expect(matrix[table]["select(A)"].anon, `${table}`).not.toMatch(/✓/);
     }
   });
 

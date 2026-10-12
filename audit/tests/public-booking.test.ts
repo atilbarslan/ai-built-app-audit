@@ -181,6 +181,22 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
     expect(res.rejected, "20k-char customer name accepted (no length bound)").toBe(true);
   });
 
+  it("[Item 12] different phone formats for the same person map to ONE customer", async () => {
+    const res = await rolledBack(async (t) => {
+      await act(t, "anon");
+      await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1, starts: validSlotUtc(3).toISOString(), name: "Norm One", phone: "0555 111 99 88" });
+      await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1, starts: validSlotUtc(4).toISOString(), name: "Norm One", phone: "+90 555 111 9988" });
+      await act(t, "A");
+      const [row] = await t.unsafe(
+        `select count(*)::int as n, min(phone) as phone from public.customers where salon_id=$1 and phone like '%5551119988'`,
+        [ids.salonA],
+      );
+      return row;
+    });
+    expect(res.n, "phone variants created duplicate customers").toBe(1);
+    expect(res.phone).toBe("+905551119988");
+  });
+
   // ---- Defenses that DO hold (these should PASS, and are reported as strengths) ----
 
   it("DEFENSE: anon booking in the past is rejected", async () => {

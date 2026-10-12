@@ -189,6 +189,9 @@ function BookingPage() {
             <div className="space-y-1.5"><Label htmlFor="p">Phone</Label><Input id="p" type="tel" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+90 5xx xxx xx xx" /></div>
             <div className="space-y-1.5"><Label htmlFor="e">Email</Label><Input id="e" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <Button type="submit" variant="copper" size="lg" className="w-full" disabled={busy}>{busy ? "Booking…" : "Confirm booking"}</Button>
+            <p className="pt-1 text-center text-xs text-muted-foreground">
+              Your name, phone and email are shared with {salon.name} only, to manage your booking. Contact the salon to update or delete your details.
+            </p>
           </form>
         </Section>
       )}

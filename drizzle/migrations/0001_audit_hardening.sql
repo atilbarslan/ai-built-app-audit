@@ -33,7 +33,7 @@ $$;
 create or replace function public.create_public_booking(_salon uuid, _service uuid, _staff uuid, _starts timestamptz, _name text, _phone text, _email text)
 returns uuid language plpgsql security definer set search_path = public as $$
 declare _svc services%rowtype; _sal salons%rowtype; _cust uuid; _id uuid;
-        _local timestamp; _end_local timestamp; _ends timestamptz;
+        _local timestamp; _end_local timestamp; _ends timestamptz; _phone_norm text;
 begin
   -- SEC-02: input bounds + format
   if length(trim(coalesce(_name,''))) < 2 or length(trim(coalesce(_phone,''))) < 6 then raise exception 'Please enter your name and phone number'; end if;
@@ -44,6 +44,7 @@ begin
     if _email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then raise exception 'Please enter a valid email'; end if;
   end if;
   if trim(coalesce(_phone,'')) !~ '^[0-9 +()\-]+$' then raise exception 'Please enter a valid phone number'; end if;
+  _phone_norm := public.normalize_phone(_phone); -- Item 12: canonical phone for dedupe/storage
 
   if _starts < now() then raise exception 'That time is in the past'; end if;
 
@@ -80,7 +81,7 @@ begin
 
   -- BH-02: per-phone cap on upcoming bookings (stops one person flooding the book)
   if (select count(*) from bookings b join customers c on c.id = b.customer_id
-        where c.salon_id = _salon and c.phone = trim(_phone)
+        where c.salon_id = _salon and c.phone = _phone_norm
           and b.status = 'booked' and b.starts_at > now()) >= 5 then
     raise exception 'You already have several upcoming bookings. Please contact the salon.';
   end if;
@@ -93,7 +94,7 @@ begin
     raise exception 'Too many bookings right now. Please try again shortly.';
   end if;
 
-  insert into customers(salon_id, name, phone, email) values (_salon, trim(_name), trim(_phone), nullif(trim(_email),''))
+  insert into customers(salon_id, name, phone, email) values (_salon, trim(_name), _phone_norm, nullif(trim(_email),''))
     on conflict (salon_id, phone) do update
       -- SEC-01: keep the stored identity; only fill empty fields.
       set name  = coalesce(nullif(customers.name, ''), excluded.name),
@@ -222,3 +223,31 @@ revoke all on function public.is_salon_owner(uuid)  from public, anon;
 revoke all on function public.is_salon_member(uuid) from public, anon;
 grant execute on function public.is_salon_owner(uuid)  to authenticated;
 grant execute on function public.is_salon_member(uuid) to authenticated;
+
+-- =====================================================================
+-- Item 11 : defense-in-depth - the Supabase defaults grant anon table-level
+-- privileges, so RLS was the ONLY thing stopping anonymous reads/writes. The
+-- public booking RPCs are SECURITY DEFINER (they run as the owner), so anon
+-- does not need any direct table privilege. Revoke them so a future RLS mistake
+-- cannot expose data to anon.
+-- =====================================================================
+revoke all on public.salons, public.staff, public.services,
+               public.customers, public.bookings, public.customer_notes
+  from anon;
+
+-- =====================================================================
+-- Item 12 : phone normalization. Customers are keyed by (salon_id, phone); the
+-- same person typing "0555 111 22 33", "+90 555 111 2233" or "00905551112233"
+-- must map to ONE customer. Normalize to +90 E.164-ish before storing/looking up.
+-- =====================================================================
+create or replace function public.normalize_phone(_p text) returns text
+language sql immutable set search_path = public as $$
+  with s as (select regexp_replace(coalesce(_p,''), '[^0-9+]', '', 'g') as d)
+  select case
+    when d like '00%'     then '+' || substring(d from 3)      -- 0090... -> +90...
+    when left(d,1) = '+'  then d                                -- already +CC
+    when left(d,1) = '0'  then '+90' || substring(d from 2)     -- Turkish local 0xxx
+    when length(d) > 0    then '+90' || d                       -- bare local digits
+    else d
+  end from s
+$$;
