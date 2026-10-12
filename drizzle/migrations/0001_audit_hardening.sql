@@ -122,3 +122,44 @@ create policy "staff reads own bookings" on public.bookings
             where st.id = bookings.staff_id and st.user_id = auth.uid() and st.active)
   );
 -- ("owner manages bookings" from 0000 still grants the owner all access incl. select)
+
+-- =====================================================================
+-- SEC-04 : staff invites must be ACCEPTED explicitly, not auto-linked by
+-- email on login. Replace the auto-claim with (a) a list of pending invites
+-- for the signed-in user and (b) an accept RPC guarded by the email match.
+-- =====================================================================
+
+-- stop auto-claiming on login (keep the name a no-op for backward-compat)
+create or replace function public.claim_staff_invites() returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  return; -- SEC-04: no automatic linking; use accept_staff_invite instead
+end $$;
+
+-- pending invites for the current user (matched by email), as json
+create or replace function public.list_staff_invites() returns json
+language sql stable security definer set search_path = public as $$
+  select coalesce(
+    json_agg(json_build_object('staff_id', st.id, 'salon_id', st.salon_id, 'salon_name', s.name) order by s.name),
+    '[]'::json)
+  from staff st join salons s on s.id = st.salon_id
+  where st.user_id is null and st.active
+    and lower(st.email) = lower((select email from auth.users where id = auth.uid()))
+$$;
+revoke all on function public.list_staff_invites() from public, anon;
+grant execute on function public.list_staff_invites() to authenticated;
+
+-- accept a specific invite; links ONLY if it is addressed to the caller's email
+create or replace function public.accept_staff_invite(_staff uuid) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare _email text; _n int;
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  select email into _email from auth.users where id = auth.uid();
+  update staff set user_id = auth.uid()
+    where id = _staff and user_id is null and lower(email) = lower(_email);
+  get diagnostics _n = row_count;
+  return _n > 0;
+end $$;
+revoke all on function public.accept_staff_invite(uuid) from public, anon;
+grant execute on function public.accept_staff_invite(uuid) to authenticated;

@@ -291,7 +291,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_staff_invite: { Args: { _staff: string }; Returns: boolean }
       claim_staff_invites: { Args: never; Returns: undefined }
+      list_staff_invites: { Args: never; Returns: Json }
       create_public_booking: {
         Args: {
           _email: string

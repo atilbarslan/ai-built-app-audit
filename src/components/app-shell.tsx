@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { BarChart3, CalendarDays, ClipboardList, LogOut, Settings, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMe, meQueryKey } from "@/hooks/use-me";
+import { useMe, meQueryKey, type StaffInvite } from "@/hooks/use-me";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,7 @@ export function AppShell() {
   if (isLoading || !me) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;
   }
-  if (!me.salon) return <Onboarding onSignOut={signOut} email={me.email} />;
+  if (!me.salon) return <Onboarding onSignOut={signOut} email={me.email} invites={me.invites} />;
 
   const nav = [
     { to: "/dashboard", label: "Home", icon: BarChart3 },
@@ -84,12 +84,23 @@ export function AppShell() {
   );
 }
 
-function Onboarding({ onSignOut, email }: { onSignOut: () => void; email: string }) {
+function Onboarding({ onSignOut, email, invites }: { onSignOut: () => void; email: string; invites: StaffInvite[] }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [owner, setOwner] = useState("");
   const [busy, setBusy] = useState(false);
+  const [accepting, setAccepting] = useState<string>();
+
+  async function accept(staffId: string) {
+    setAccepting(staffId);
+    const { data, error } = await supabase.rpc("accept_staff_invite", { _staff: staffId });
+    setAccepting(undefined);
+    if (error) { toast.error(error.message); return; }
+    if (!data) { toast.error("That invite is no longer available."); return; }
+    toast.success("You've joined the salon.");
+    qc.invalidateQueries({ queryKey: meQueryKey });
+  }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -112,6 +123,22 @@ function Onboarding({ onSignOut, email }: { onSignOut: () => void; email: string
         <p className="mt-2 text-sm text-muted-foreground">
           Signed in as {email}. If you're a staff member, ask the owner to add this email under Settings → Staff, then refresh.
         </p>
+
+        {invites.length > 0 && (
+          <div className="surface mt-6 space-y-3 p-6">
+            <p className="font-semibold">You have been invited to join:</p>
+            {invites.map((inv) => (
+              <div key={inv.staff_id} className="flex items-center justify-between gap-3">
+                <span className="truncate">{inv.salon_name}</span>
+                <Button size="sm" disabled={accepting === inv.staff_id} onClick={() => accept(inv.staff_id)}>
+                  {accepting === inv.staff_id ? "Joining…" : "Accept"}
+                </Button>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">Accepting links your account to that salon so you can see your calendar.</p>
+          </div>
+        )}
+
         <form onSubmit={create} className="surface mt-6 space-y-4 p-6">
           <div className="space-y-1.5">
             <Label htmlFor="sn">Salon name</Label>

@@ -2,12 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 
+export type StaffInvite = { staff_id: string; salon_id: string; salon_name: string };
+
 export type Me = {
   userId: string;
   email: string;
   salon: Tables<"salons"> | null;
   myStaff: Tables<"staff"> | null;
   isOwner: boolean;
+  invites: StaffInvite[];
 };
 
 export const meQueryKey = ["me"];
@@ -17,7 +20,8 @@ async function fetchMe(): Promise<Me | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  await supabase.rpc("claim_staff_invites");
+  // SEC-04: invites are no longer auto-claimed on login; the user accepts them
+  // explicitly (see pending invites below + Onboarding accept button).
   const { data: owned } = await supabase
     .from("salons")
     .select("*")
@@ -36,12 +40,16 @@ async function fetchMe(): Promise<Me | null> {
     salon = r.data ?? null;
   }
   const myStaff = staffRows?.find((s) => s.salon_id === salon?.id) ?? null;
+  // Pending staff invites addressed to this user's email (not auto-accepted).
+  const { data: invitesData } = await supabase.rpc("list_staff_invites");
+  const invites = ((invitesData as unknown as StaffInvite[]) ?? []).filter((i) => i.salon_id !== salon?.id);
   return {
     userId: user.id,
     email: user.email ?? "",
     salon,
     myStaff,
     isOwner: !!owned && salon?.id === owned.id,
+    invites,
   };
 }
 
