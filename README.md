@@ -26,15 +26,15 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 | SEC-03 - staff could edit/delete customers and read all bookings | Medium | Fixed |
 | SEC-04 - invites auto-linked by email without consent | Medium | Fixed |
 | SEC-02 - no length/format validation on public bookings | Medium | Fixed |
-| SEC-05 - no security response headers | Medium | Fixed |
+| SEC-05 - no security response headers | Medium | Fixed (CSP allows inline scripts; nonce-based CSP recommended) |
 | SEC-06 - session token in localStorage | Medium | Recommendation |
-| SEC-10 - personal data flows (no retention/erasure/notice) | Medium | Partially fixed (notice added) |
+| SEC-10 - personal data flows (no retention/erasure/notice) | Medium | Partially fixed (privacy notice only; retention/erasure/export outstanding) |
 | SE-01 - business rules only in the UI | Medium | Partially fixed (public rules server-side; revenue still client-side, see SE-03) |
 | SE-02 - booking slots computed in the visitor's time zone | Medium | Fixed |
 | SE-03 - no pagination; ~1000-row cap; client-side revenue | Medium | Recommendation |
 | SE-04 - data model (phone normalization, cascade, no audit trail) | Medium | Partially fixed |
 | SEC-07 - slug not sanitized in the RPC | Low | Fixed |
-| SEC-09 - prompt-injection surface in outgoing AI messages | Low | Fixed |
+| SEC-09 - prompt-injection surface in outgoing AI messages | Low | Mitigated (URL stripping + data fencing; no live exploit tested) |
 | SEC-11 - `.env` committed; dev-only dependency advisories | Low | Recommendation |
 | SEC-12 - auth behaviour (brute-force not throttled in the test project) | Low | Recommendation |
 | SE-05 - thin tests, some `any`, vendor lock-in | Low | Recommendation |

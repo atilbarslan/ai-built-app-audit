@@ -27,7 +27,7 @@ const SEV = {
   Critical: "#7a1020", High: "#b23b2e", Medium: "#b7791f", Low: "#4a6b8a", Informational: "#5a6b5a",
 };
 const sevBadge = (s) => `<span class="badge" style="background:${SEV[s] ?? "#555"}">${esc(s)}</span>`;
-const statusClass = (s) => (/^fixed$/i.test(s) ? "ok" : /partial/i.test(s) ? "part" : "rec");
+const statusClass = (s) => (/^fixed$/i.test(s) ? "ok" : /partial|mitigat/i.test(s) ? "part" : "rec");
 
 const counts = d.executiveSummary.counts;
 const countRow = Object.entries(counts)

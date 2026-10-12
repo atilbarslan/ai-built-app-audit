@@ -85,7 +85,8 @@
       "whatChanged": "We changed the database access rules: staff may read clients (needed to keep notes), but only the owner may add, change or delete them; and each staff member can read only the bookings assigned to them, while the owner reads all.",
       "files": ["drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["3c08384"],
-      "howVerified": "Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after."
+      "howVerified": "Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after.",
+      "whatRemains": "Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended."
     },
     {
       "id": "SEC-04", "severity": "Medium", "status": "Fixed",
@@ -115,7 +116,8 @@
       "whatChanged": "We added a content security policy and the other standard security headers to every server response, and allowed the specific resources the app actually needs so nothing breaks.",
       "files": ["src/lib/security-headers.ts", "src/server.ts"],
       "commits": ["2865255"],
-      "howVerified": "Test in security-headers.test.ts checks the headers are present, and a live check confirmed the booking and sign-in pages load with no policy violations."
+      "howVerified": "Test in security-headers.test.ts checks the headers are present, and a live check confirmed the booking and sign-in pages load with no policy violations.",
+      "whatRemains": "The policy still permits inline scripts (it has to, because the app's framework injects them as the page loads), which weakens its protection against injected scripts. Tightening it to a stricter, nonce-based policy is a recommended follow-up (see the roadmap)."
     },
     {
       "id": "SEC-06", "severity": "Medium", "status": "Recommendation",
@@ -132,7 +134,7 @@
       "title": "Personal data handling and the AI features",
       "found": "Client personal data (name, phone, email, notes, visit history) is sent to an outside AI provider for the summary and reminder features. There was no stated retention period, no deletion or export path, and no privacy notice on the booking page.",
       "impact": "Clients' personal data leaves the salon's system with no stated handling, and the salon cannot easily honour a request to delete someone's data.",
-      "whatChanged": "We added a short privacy notice to the public booking page telling clients their details are shared only with the salon and how to ask for changes or deletion.",
+      "whatChanged": "So far only one thing has changed: a short privacy notice was added to the public booking page, telling clients their details are shared only with the salon and how to ask for changes or deletion. The substantive data-protection work below is still outstanding.",
       "files": ["src/routes/book.$slug.tsx"],
       "commits": ["a5937aa"],
       "howVerified": "Confirmed on the booking page.",
@@ -192,14 +194,15 @@
       "howVerified": "Tests in pentest.test.ts confirm a malformed link is normalised and a negative price is rejected."
     },
     {
-      "id": "SEC-09", "severity": "Low", "status": "Fixed",
+      "id": "SEC-09", "severity": "Low", "status": "Mitigated",
       "title": "AI reminder could be steered by note content",
       "found": "Client name and notes flow directly into the AI prompt, and the AI-written reminder is sent from the salon's own phone number.",
       "impact": "Someone could try to steer the reminder message (for example to insert a link) by writing instructions into a client's note or name.",
       "whatChanged": "We wrap the client's name and notes as data (clearly marked as not instructions) before sending them to the AI, and strip any links out of the reminder before it can be sent.",
       "files": ["src/lib/ai-sanitize.ts", "src/lib/ai.functions.ts"],
       "commits": ["74b21bb"],
-      "howVerified": "Test in ai-sanitize.test.ts removes a link smuggled into a simulated AI reply and keeps normal text."
+      "howVerified": "Test in ai-sanitize.test.ts removes a link smuggled into a simulated AI reply and keeps normal text. No live exploit was attempted against the production model, which is not reachable in this test setup.",
+      "whatRemains": "The hard control here is stripping links from the outgoing message. Wrapping the notes as data reduces, but cannot fully guarantee against, an AI model being steered; this is why the status is 'Mitigated' rather than 'Fixed'. Keep untrusted text out of the instruction part of the prompt as the AI model changes."
     },
     {
       "id": "SEC-11", "severity": "Low", "status": "Recommendation",
@@ -255,7 +258,8 @@
     { "priority": "5", "item": "Per-visitor rate limiting and a CAPTCHA at the edge; AI usage limit", "addresses": "BH-02", "effort": "Low" },
     { "priority": "6", "item": "Confirm production auth settings and enable password-guessing protection", "addresses": "SEC-12", "effort": "Low" },
     { "priority": "7", "item": "Keep environment files out of the repository; update development tools", "addresses": "SEC-11", "effort": "Low" },
-    { "priority": "8", "item": "Broaden automated tests; tighten types; soft-delete and audit trail", "addresses": "SE-04, SE-05", "effort": "Medium" }
+    { "priority": "8", "item": "Broaden automated tests; tighten types; soft-delete and audit trail", "addresses": "SE-04, SE-05", "effort": "Medium" },
+    { "priority": "9", "item": "Tighten the content security policy to a nonce-based one that no longer allows inline scripts", "addresses": "SEC-05", "effort": "Low" }
   ],
   "scope": "Testing was limited to a locally running copy of the app and a separate test project with the same database structure applied to it. No hosted or production environment was accessed. All test data is fictitious.",
   "reproduce": {

@@ -61,7 +61,7 @@ Fixes were made test-first (a failing test that proves the finding, then the sma
 | SEC-05 security headers | Fixed (CSP verified against the running app) |
 | SEC-07 slug + non-negative price | Fixed |
 | SEC-08 helper-function grants | Fixed |
-| SEC-09 AI prompt injection | Fixed (data isolation + URL stripping) |
+| SEC-09 AI prompt injection | Mitigated (data isolation + URL stripping; fencing is best-effort, no live exploit reproduced) |
 | SEC-10 privacy | Partially fixed (booking-page notice; retention/erasure recommended) |
 | Hardening: anon table grants | Fixed |
 | Hardening: phone normalization | Fixed |
@@ -139,7 +139,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 #### SEC-03 - Staff could do more than "see their own calendar" · **Medium**
 - **Evidence:** `0000_migration.sql:100` (`members manage customers` granted all operations to any member), `:102` (members could read every booking); customer FKs cascade (`:50`,`:63`) so deleting a customer also deletes their bookings and notes. Tests (`audit/tests/role-matrix.test.ts`, `http-e2e.test.ts`): staff A1 edited and deleted customers.
 - **Impact:** Any stylist could delete a customer and wipe that customer's entire history for the salon, and could see other staff members' clients.
-- **Fix / Status: Fixed** (`0001`, SEC-03). Customer writes/deletes are owner-only (`members read customers` for select + `owner manages customers` for all); bookings: each staff member reads only their own (`staff reads own bookings`), owner reads all. Tests green. Customer deletes are now owner-only (the FK cascade remains; a soft-delete to preserve history is recommended).
+- **Fix / Status: Fixed** (`0001`, SEC-03). Customer writes/deletes are owner-only (`members read customers` for select + `owner manages customers` for all); bookings: each staff member reads only their own (`staff reads own bookings`), owner reads all. Tests green. Customer deletes are now owner-only (the FK cascade remains; a soft-delete to preserve history is recommended). **Residual:** staff retain read access to the full customer directory (names/phone/email/notes) - needed to keep notes; only their booking view is scoped to their own. Scoping the directory per staff member is a separate product decision (see `role-matrix.md`, `customers.select` = ✓ for staff).
 
 #### SEC-04 - Invites auto-linked by email, without consent · **Medium** (exposes a salon's customer data, but requires an owner to enter the email, so it is not attacker-triggered; a consent/access defect)
 - **Evidence:** `0000_migration.sql:110-117` (`claim_staff_invites`), called on every sign-in in `src/hooks/use-me.ts`. Test (`audit/tests/pentest.test.ts`): owner B added X's email as staff in Salon B; on X's sign-in, X became a member and could read Salon B's customers.
@@ -167,7 +167,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 #### SEC-09 - Prompt-injection surface in outgoing AI messages · **Low** (architectural; live exploit not reproduced)
 - **Evidence:** `src/lib/ai.functions.ts` - untrusted customer name and notes flowed directly into the AI prompt; the reminder output is then sent from the salon's own WhatsApp/SMS (`src/routes/_authenticated/customers.$id.tsx`).
 - **Verification:** the production model is not reachable locally; two injection attempts against an equivalent model (used as a test tool) were not followed. The architectural weakness was real; a live exploit was not reproduced.
-- **Fix / Status: Fixed** (`src/lib/ai-sanitize.ts` + `ai.functions.ts`, SEC-09). Untrusted data is fenced as "data, not instructions" (and fence-escape attempts are stripped); URLs are stripped from the reminder output. Unit test: `audit/tests/ai-sanitize.test.ts`.
+- **Fix / Status: Mitigated** (`src/lib/ai-sanitize.ts` + `ai.functions.ts`, SEC-09). Untrusted data is fenced as "data, not instructions" (and fence-escape attempts are stripped); URLs are stripped from the reminder output. Unit test: `audit/tests/ai-sanitize.test.ts`. **Why "Mitigated", not "Fixed":** the enforceable control is the URL stripping on the output; fencing the input lowers but cannot guarantee away prompt-injection, and no live exploit was run against the production model (not reachable here). This is defence-in-depth, not a proof.
 
 #### SEC-10 - Personal-data flows (technical, not legal) · **Medium**
 - **Evidence:** customer name/phone/email + notes + history are sent to the AI gateway and on to a language-model provider for the summary/reminder features (`src/lib/ai.functions.ts`); no retention limit, erasure or export; no privacy notice on the public booking page.
@@ -239,6 +239,6 @@ Lovable's own scan reported no issues and states that *"The scanner can't catch 
 - **SEC-11:** keep `.env` out of git; single package manager + pinned lockfile + `drizzle-kit` update.
 - **SE-03:** pagination + server-side aggregation (the ~1000-row cap is real).
 - **SE-05:** broaden test coverage; replace `any` with typed query results.
-- **SEC-09:** a stricter nonce-based CSP (currently `script-src 'unsafe-inline'`).
+- **SEC-05:** a stricter nonce-based CSP (the current policy allows `script-src 'unsafe-inline'`).
 
 Suggested next priority: SEC-01 OTP -> SEC-06 cookie session -> SE-03 pagination/server aggregation -> retention/erasure (SEC-10).

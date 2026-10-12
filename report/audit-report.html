@@ -178,7 +178,7 @@
     <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/3c08384">3c08384</a></p>
     <h3>How we verified it</h3>
     <p>Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after.</p>
-    
+    <h3>What remains</h3><p>Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended.</p>
     <div class="fnum">Finding 4 of 19</div>
   </section>
   <section class="page finding">
@@ -241,7 +241,7 @@
     <p class="where">Files: <code>src/lib/security-headers.ts</code>, <code>src/server.ts</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/2865255">2865255</a></p>
     <h3>How we verified it</h3>
     <p>Test in security-headers.test.ts checks the headers are present, and a live check confirmed the booking and sign-in pages load with no policy violations.</p>
-    
+    <h3>What remains</h3><p>The policy still permits inline scripts (it has to, because the app's framework injects them as the page loads), which weakens its protection against injected scripts. Tightening it to a stricter, nonce-based policy is a recommended follow-up (see the roadmap).</p>
     <div class="fnum">Finding 7 of 19</div>
   </section>
   <section class="page finding">
@@ -271,7 +271,7 @@
     
     
     <h3>What we changed</h3>
-    <p>We added a short privacy notice to the public booking page telling clients their details are shared only with the salon and how to ask for changes or deletion.</p>
+    <p>So far only one thing has changed: a short privacy notice was added to the public booking page, telling clients their details are shared only with the salon and how to ask for changes or deletion. The substantive data-protection work below is still outstanding.</p>
     <h3>Where</h3>
     <p class="where">Files: <code>src/routes/book.$slug.tsx</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/a5937aa">a5937aa</a></p>
     <h3>How we verified it</h3>
@@ -380,7 +380,7 @@
   <section class="page finding">
     <div class="fhead">
       <div class="fid">SEC-09 <span class="badge" style="background:#4a6b8a">Low</span></div>
-      <div class="fstatus ok">Fixed</div>
+      <div class="fstatus part">Mitigated</div>
     </div>
     <h2>AI reminder could be steered by note content</h2>
     <h3>What was found</h3>
@@ -394,8 +394,8 @@
     <h3>Where</h3>
     <p class="where">Files: <code>src/lib/ai-sanitize.ts</code>, <code>src/lib/ai.functions.ts</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/74b21bb">74b21bb</a></p>
     <h3>How we verified it</h3>
-    <p>Test in ai-sanitize.test.ts removes a link smuggled into a simulated AI reply and keeps normal text.</p>
-    
+    <p>Test in ai-sanitize.test.ts removes a link smuggled into a simulated AI reply and keeps normal text. No live exploit was attempted against the production model, which is not reachable in this test setup.</p>
+    <h3>What remains</h3><p>The hard control here is stripping links from the outgoing message. Wrapping the notes as data reduces, but cannot fully guarantee against, an AI model being steered; this is why the status is 'Mitigated' rather than 'Fixed'. Keep untrusted text out of the instruction part of the prompt as the AI model changes.</p>
     <div class="fnum">Finding 15 of 19</div>
   </section>
   <section class="page finding">
@@ -467,7 +467,7 @@
     <p>Recommended order for the work still outstanding.</p>
     <table>
       <tr><th>#</th><th>Action</th><th>Addresses</th><th>Effort</th></tr>
-      <tr><td>1</td><td>Phone verification (one-time code) at booking</td><td>SEC-01</td><td>Medium</td></tr><tr><td>2</td><td>Move the login session to a secure, script-inaccessible cookie</td><td>SEC-06</td><td>Medium</td></tr><tr><td>3</td><td>Server-side totals and paging for lists and the dashboard</td><td>SE-03</td><td>Medium</td></tr><tr><td>4</td><td>Data retention, deletion and export; minimise data sent to the AI</td><td>SEC-10</td><td>Medium</td></tr><tr><td>5</td><td>Per-visitor rate limiting and a CAPTCHA at the edge; AI usage limit</td><td>BH-02</td><td>Low</td></tr><tr><td>6</td><td>Confirm production auth settings and enable password-guessing protection</td><td>SEC-12</td><td>Low</td></tr><tr><td>7</td><td>Keep environment files out of the repository; update development tools</td><td>SEC-11</td><td>Low</td></tr><tr><td>8</td><td>Broaden automated tests; tighten types; soft-delete and audit trail</td><td>SE-04, SE-05</td><td>Medium</td></tr>
+      <tr><td>1</td><td>Phone verification (one-time code) at booking</td><td>SEC-01</td><td>Medium</td></tr><tr><td>2</td><td>Move the login session to a secure, script-inaccessible cookie</td><td>SEC-06</td><td>Medium</td></tr><tr><td>3</td><td>Server-side totals and paging for lists and the dashboard</td><td>SE-03</td><td>Medium</td></tr><tr><td>4</td><td>Data retention, deletion and export; minimise data sent to the AI</td><td>SEC-10</td><td>Medium</td></tr><tr><td>5</td><td>Per-visitor rate limiting and a CAPTCHA at the edge; AI usage limit</td><td>BH-02</td><td>Low</td></tr><tr><td>6</td><td>Confirm production auth settings and enable password-guessing protection</td><td>SEC-12</td><td>Low</td></tr><tr><td>7</td><td>Keep environment files out of the repository; update development tools</td><td>SEC-11</td><td>Low</td></tr><tr><td>8</td><td>Broaden automated tests; tighten types; soft-delete and audit trail</td><td>SE-04, SE-05</td><td>Medium</td></tr><tr><td>9</td><td>Tighten the content security policy to a nonce-based one that no longer allows inline scripts</td><td>SEC-05</td><td>Low</td></tr>
     </table>
   </section>
 
