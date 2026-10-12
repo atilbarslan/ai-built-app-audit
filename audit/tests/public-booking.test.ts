@@ -17,6 +17,17 @@ afterAll(async () => {
   await sql.end();
 });
 
+// A valid bookable instant: `daysAhead` from now (within the 21-day window), at
+// 11:00 in the salon's zone (Istanbul = UTC+3 year-round -> 08:00Z), on an open
+// day (Mon-Sat), aligned to the minute. Used so tests exercise the intended
+// behaviour instead of tripping the new open-hours/window/alignment checks.
+function validSlotUtc(daysAhead: number, hourIstanbul = 11): Date {
+  const d = new Date(Date.now() + daysAhead * 864e5);
+  d.setUTCHours(hourIstanbul - 3, 0, 0, 0);
+  while (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1); // skip Sunday (closed)
+  return d;
+}
+
 const book = (
   t: any,
   o: { salon: string; service: string; staff: string; starts: string; name?: string; phone?: string; email?: string },
@@ -41,7 +52,7 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
         salon: ids.salonA,
         service: ids.serviceA,
         staff: ids.staffA1, // A1 has no seed booking -> collision-free slot
-        starts: new Date(Date.now() + 100 * 864e5).toISOString(),
+        starts: validSlotUtc(5).toISOString(),
         name: "HACKED NAME",
         phone: "+905551112233",
         email: "attacker@evil.test",
@@ -133,16 +144,19 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
     expect(created, `anon created ${created}/60 bookings with no rate limit`).toBeLessThan(60);
   });
 
-  it("[#2] create_public_booking must bound the customer name length", async () => {
+  it("[#2/SEC-02] create_public_booking must bound the customer name length", async () => {
+    // Secure outcome: a 20k-char name is rejected server-side (nothing stored).
     const res = await rolledBack(async (t) => {
       await act(t, "anon");
       const huge = "A".repeat(20000);
-      await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.ownerStaffA, starts: new Date(Date.now() + 6 * 864e5).toISOString(), name: huge, phone: "+905550000034" });
-      await act(t, "A"); // read back as the owner (anon cannot read customers - a good defense)
-      const [row] = await t.unsafe(`select length(name) as len from public.customers where salon_id=$1 and phone='+905550000034'`, [ids.salonA]);
-      return (row?.len ?? 0) as number;
+      try {
+        await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1, starts: validSlotUtc(6).toISOString(), name: huge, phone: "+905550000034" });
+        return { rejected: false };
+      } catch (e) {
+        return { rejected: true, error: shortErr(e) };
+      }
     });
-    expect(res, "20k-char customer name stored unbounded").toBeLessThanOrEqual(200);
+    expect(res.rejected, "20k-char customer name accepted (no length bound)").toBe(true);
   });
 
   // ---- Defenses that DO hold (these should PASS, and are reported as strengths) ----
@@ -163,11 +177,10 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
   it("DEFENSE: double-booking the same staff+time is blocked by the exclusion constraint", async () => {
     const res = await rolledBack(async (t) => {
       await act(t, "anon");
-      const start = new Date(Date.now() + 7 * 864e5);
-      start.setUTCHours(10, 0, 0, 0);
-      await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.ownerStaffA, starts: start.toISOString(), phone: "+905550000036" });
+      const start = validSlotUtc(7, 12); // valid open-hours slot on an open day
+      await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1, starts: start.toISOString(), phone: "+905550000036" });
       try {
-        await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.ownerStaffA, starts: start.toISOString(), phone: "+905550000037" });
+        await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1, starts: start.toISOString(), phone: "+905550000037" });
         return { second: true };
       } catch (e) {
         return { second: false, error: shortErr(e) };

@@ -68,7 +68,7 @@ function BookingPage() {
   const slots = useMemo(
     () =>
       day && service && busyQ.data
-        ? buildSlots({ date: day, open: salon.open_time, close: salon.close_time, duration: service.duration_min, busy: busyQ.data })
+        ? buildSlots({ date: day, open: salon.open_time, close: salon.close_time, duration: service.duration_min, busy: busyQ.data, timeZone: salon.timezone })
         : [],
     [day, service, busyQ.data, salon],
   );

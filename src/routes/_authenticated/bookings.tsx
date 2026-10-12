@@ -124,7 +124,7 @@ function MoveDialog({ booking, onClose }: { booking: BookingRow; onClose: () => 
   const duration = (new Date(booking.ends_at).getTime() - new Date(booking.starts_at).getTime()) / 60000;
   const busyQ = useBookings({ salonId: me.salon.id, from: dayDate, to: endOfDay(dayDate), staffId });
   const busy = (busyQ.data ?? []).filter((b) => b.id !== booking.id);
-  const slots = busyQ.data ? buildSlots({ date: dayDate, open: me.salon.open_time, close: me.salon.close_time, duration, busy }) : [];
+  const slots = busyQ.data ? buildSlots({ date: dayDate, open: me.salon.open_time, close: me.salon.close_time, duration, busy, timeZone: me.salon.timezone }) : [];
   void servicesQ;
 
   async function move(t: Date) {

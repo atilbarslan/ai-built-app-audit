@@ -31,7 +31,38 @@ export function phoneDigits(p: string) {
 
 type Busy = { starts_at: string; ends_at: string };
 
-/** Build free start times for a day within opening hours. */
+/** Offset (ms) of `timeZone` from UTC at the given instant. */
+function tzOffsetMs(utcMs: number, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const p = dtf.formatToParts(new Date(utcMs)).reduce<Record<string, string>>((a, x) => {
+    if (x.type !== "literal") a[x.type] = x.value;
+    return a;
+  }, {});
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +(p.hour === "24" ? "0" : p.hour), +p.minute, +p.second);
+  return asUTC - utcMs;
+}
+
+/** The absolute instant of a wall-clock time in `timeZone`. */
+export function zonedWallTimeToUtc(y: number, mo: number, d: number, hh: number, mm: number, timeZone: string): Date {
+  const guess = Date.UTC(y, mo, d, hh, mm, 0);
+  return new Date(guess - tzOffsetMs(guess, timeZone));
+}
+
+/**
+ * Build free start times for a day within opening hours.
+ * When `timeZone` is given, open/close are interpreted in the SALON's zone so
+ * the slots are the same absolute instants for every visitor (SE-02). Without
+ * it, falls back to the viewer's local zone (legacy behavior).
+ */
 export function buildSlots(opts: {
   date: Date;
   open: string; // "09:00:00"
@@ -39,14 +70,25 @@ export function buildSlots(opts: {
   duration: number;
   busy: Busy[];
   step?: number;
+  timeZone?: string;
 }) {
-  const { date, open, close, duration, busy, step = 15 } = opts;
+  const { date, open, close, duration, busy, step = 15, timeZone } = opts;
   const [oh = 9, om = 0] = open.split(":").map(Number);
   const [ch = 19, cm = 0] = close.split(":").map(Number);
-  const start = new Date(date);
-  start.setHours(oh, om, 0, 0);
-  const end = new Date(date);
-  end.setHours(ch, cm, 0, 0);
+  let start: Date;
+  let end: Date;
+  if (timeZone) {
+    const y = date.getFullYear();
+    const mo = date.getMonth();
+    const d = date.getDate();
+    start = zonedWallTimeToUtc(y, mo, d, oh, om, timeZone);
+    end = zonedWallTimeToUtc(y, mo, d, ch, cm, timeZone);
+  } else {
+    start = new Date(date);
+    start.setHours(oh, om, 0, 0);
+    end = new Date(date);
+    end.setHours(ch, cm, 0, 0);
+  }
   const now = Date.now();
   const out: Date[] = [];
   for (let t = start.getTime(); t + duration * 60000 <= end.getTime(); t += step * 60000) {

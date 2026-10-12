@@ -12,6 +12,7 @@ export type PublicSalon = {
     open_time: string;
     close_time: string;
     open_days: number[];
+    timezone: string;
   };
   services: { id: string; name: string; price: number; duration_min: number }[];
   staff: { id: string; name: string }[];

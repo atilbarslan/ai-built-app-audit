@@ -177,6 +177,7 @@ export type Database = {
           owner_id: string
           phone: string | null
           slug: string
+          timezone: string
         }
         Insert: {
           address?: string | null
@@ -189,6 +190,7 @@ export type Database = {
           owner_id: string
           phone?: string | null
           slug: string
+          timezone?: string
         }
         Update: {
           address?: string | null
@@ -201,6 +203,7 @@ export type Database = {
           owner_id?: string
           phone?: string | null
           slug?: string
+          timezone?: string
         }
         Relationships: []
       }
