@@ -74,15 +74,14 @@ insert into public.staff (salon_id, name, email, role)
 select id, 'Stylist A2', 'staffa2@example.test', 'staff' from public.salons where slug='salon-a';
 reset role;
 
--- 6. A1 and A2 sign in -> claim_staff_invites links their user_id by email
-set local role authenticated;
-set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated","email":"staffa1@example.test"}';
-select public.claim_staff_invites();
-reset role;
-set local role authenticated;
-set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated","email":"staffa2@example.test"}';
-select public.claim_staff_invites();
-reset role;
+-- 6. Link A1 and A2 to their staff rows. (The app flow is now an explicit
+-- accept_staff_invite; claim_staff_invites is a no-op after SEC-04. For a
+-- deterministic seed we link directly here; the accept flow is covered by its
+-- own test in audit/tests/pentest.test.ts.)
+update public.staff set user_id = '22222222-2222-2222-2222-222222222222'
+  where email = 'staffa1@example.test' and salon_id = (select id from public.salons where slug='salon-a');
+update public.staff set user_id = '33333333-3333-3333-3333-333333333333'
+  where email = 'staffa2@example.test' and salon_id = (select id from public.salons where slug='salon-a');
 
 -- 7. a couple of services + one real customer/booking in Salon A for later tests
 set local role authenticated;

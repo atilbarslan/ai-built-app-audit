@@ -178,3 +178,37 @@ begin
 end $$;
 revoke all on function public.accept_staff_invite(uuid) from public, anon;
 grant execute on function public.accept_staff_invite(uuid) to authenticated;
+
+-- =====================================================================
+-- SEC-07 : sanitize the slug in create_salon (the UI slugify is bypassable by
+-- calling the RPC directly) and enforce a safe slug shape on the table so the
+-- settings UPDATE path is covered too.
+-- Also: non-negative price integrity on services/bookings (revenue correctness).
+-- =====================================================================
+create or replace function public.create_salon(_name text, _slug text, _owner_name text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare _id uuid; _clean text;
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  -- normalize: lowercase, non-alphanumeric runs -> '-', trim '-', cap length
+  _clean := trim(both '-' from regexp_replace(lower(coalesce(_slug,'')), '[^a-z0-9]+', '-', 'g'));
+  _clean := left(_clean, 40);
+  if length(_clean) < 1 then raise exception 'Please choose a valid booking link'; end if;
+  if length(trim(coalesce(_name,''))) < 1 or length(_name) > 120 then raise exception 'Please enter a salon name'; end if;
+  insert into salons(owner_id, name, slug) values (auth.uid(), trim(_name), _clean) returning id into _id;
+  insert into staff(salon_id, user_id, name, email, role)
+    values (_id, auth.uid(), coalesce(nullif(_owner_name,''),'Owner'), (select email from auth.users where id = auth.uid()), 'owner');
+  return _id;
+end $$;
+revoke all on function public.create_salon(text,text,text) from public, anon;
+grant execute on function public.create_salon(text,text,text) to authenticated;
+
+-- defense-in-depth: valid slug shape enforced for every write path
+alter table public.salons drop constraint if exists salons_slug_format;
+alter table public.salons add constraint salons_slug_format check (slug ~ '^[a-z0-9-]+$');
+
+-- integrity: prices cannot be negative
+alter table public.services drop constraint if exists services_price_nonneg;
+alter table public.services add constraint services_price_nonneg check (price >= 0);
+alter table public.bookings drop constraint if exists bookings_price_nonneg;
+alter table public.bookings add constraint bookings_price_nonneg check (price >= 0);
