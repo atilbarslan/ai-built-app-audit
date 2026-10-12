@@ -47,6 +47,16 @@ const rubricSection =
   </section>`
     : "";
 
+const designSection =
+  d.designDecisions && d.designDecisions.length
+    ? `
+  <section class="page">
+    <h2>Design decisions (intentional behaviour)</h2>
+    <p>Some behaviour that an automated scan might flag is deliberate. These are choices the salon owner made, not defects:</p>
+    <ul>${d.designDecisions.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
+  </section>`
+    : "";
+
 const repoUrl = (d.meta.repoUrl || "").replace(/\/+$/, "");
 const commitLink = (h) => (repoUrl ? `<a href="${repoUrl}/commit/${esc(h)}">${esc(h.slice(0, 7))}</a>` : `<code>${esc(h.slice(0, 7))}</code>`);
 
@@ -82,6 +92,7 @@ const findingPages = d.findings
     <p>${esc(f.found)}</p>
     <h3>Why it matters for the business</h3>
     <p>${esc(f.impact)}</p>
+    ${f.designNote ? `<div class="callout"><strong>Design decision:</strong> ${esc(f.designNote)}</div>` : ""}
     ${remediationBlock(f)}
     <div class="fnum">Finding ${i + 1} of ${d.findings.length}</div>
   </section>`,
@@ -170,6 +181,8 @@ const html = `<!doctype html>
     <h3>Additional hardening applied</h3>
     <ul>${d.hardening.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
   </section>
+
+  ${designSection}
 
   ${findingPages}
 

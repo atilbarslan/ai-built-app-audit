@@ -32,6 +32,9 @@
     { "level": "Low", "meaning": "Limited or hard-to-reach impact, or a good-practice, hygiene or maintainability gap." },
     { "level": "Informational", "meaning": "No practical security impact; recorded for completeness." }
   ],
+  "designDecisions": [
+    "Owners and staff can place, move or cancel appointments outside published opening hours and on closed days. This is intentional: salons routinely take off-hours or day-off appointments, so the owner keeps full control of their own calendar. The public booking page that clients use is still held to the opening-hours, open-day and 21-day advance rules (see BH-01), and the system still prevents two appointments from overlapping on any path."
+  ],
   "strengths": [
     "Each salon's data is isolated from every other salon's (verified by tests).",
     "Anonymous visitors cannot read database tables directly; public actions go only through a small set of controlled functions.",
@@ -69,6 +72,7 @@
       "found": "The rules about opening hours, open days and how far ahead clients may book existed only in the app's screens. Calling the booking service directly, the only server check was that the time was not in the past.",
       "impact": "Someone bypassing the app could create appointments while the salon is closed, outside opening hours, or years in the future. The public calendar stops reflecting reality and staff cannot trust it.",
       "whatChanged": "We added the booking rules to the server function that creates a public booking: it now checks the salon's open days, opening hours, a 21-day limit, and that the chosen time lands on a valid 15-minute slot, all judged in the salon's own time zone. We also added a time-zone setting to each salon so the checks use the right clock.",
+      "designNote": "These rules apply to the public booking page only. When the owner or staff create or move a booking inside the signed-in app, they are deliberately allowed to book outside opening hours and on closed days (see Design decisions). Overlap is still prevented on every path.",
       "files": ["drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["28d4163"],
       "howVerified": "Tests '[#2] 03:00', '[#2] years in the future', '[#2] closed day' and '[BH-01] 15-minute grid' in public-booking.test.ts were accepted on the original app and are rejected after the change."
@@ -135,14 +139,16 @@
       "whatRemains": "Define a retention period with automatic deletion, add a way to export or erase a client's data on request, and reduce how much client data is sent to the AI."
     },
     {
-      "id": "SE-01", "severity": "Medium", "status": "Fixed",
+      "id": "SE-01", "severity": "Medium", "status": "Partially fixed",
       "title": "Business rules lived only in the app screens",
       "found": "Opening hours, the booking window, cancel and move rules and revenue all lived in the browser, not on the server.",
       "impact": "Anyone bypassing the app screens could ignore the salon's rules.",
-      "whatChanged": "The booking rules that lived only in the screens were moved onto the server function and into the database access rules.",
+      "whatChanged": "The rules for public (client-facing) bookings were moved onto the server function and into the database access rules, so they hold even when the app screens are bypassed.",
+      "designNote": "Owner and staff booking management (create, move, cancel) is intentionally left to the signed-in app and is not server-constrained to opening hours (see Design decisions).",
       "files": ["drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["28d4163", "3c08384"],
-      "howVerified": "Covered by the BH-01 and SEC-03 tests, which exercise the same rules on the server."
+      "howVerified": "Covered by the BH-01 and SEC-03 tests, which exercise the public rules on the server.",
+      "whatRemains": "Revenue and popular-services totals are still added up in the browser rather than on the server; that is tracked separately as SE-03."
     },
     {
       "id": "SE-02", "severity": "Medium", "status": "Fixed",

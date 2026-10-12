@@ -69,6 +69,12 @@ Fixes were made test-first (a failing test that proves the finding, then the sma
 
 Test suite after fixes: **42 tests, 41 pass, 1 skipped** (the skipped one is a time-zone demonstration that is meaningless when the machine is already on Europe/Istanbul). `npm run build` passes.
 
+### Design decisions
+
+Some behaviour is deliberate and is **not** treated as a finding:
+
+- **Owner/staff booking management is not bound by the public booking rules.** The server-side opening-hours, open-day and 21-day checks added in BH-01 apply to the public `create_public_booking` path only. When an owner or staff member creates, moves or cancels a booking inside the signed-in app (`src/routes/_authenticated/bookings.tsx`), that path writes to `bookings` directly and is intentionally allowed to place appointments outside opening hours and on closed days - salons routinely take off-hours and day-off appointments, so the owner keeps full discretion over their own calendar. This is a product decision by the owner, not an oversight. The database exclusion constraint still prevents overlapping (double-booked) appointments on every path, and tenant isolation (RLS) still applies. A salon that later wants hard limits on staff entries too can move those writes behind an authenticated booking RPC and reuse the same checks.
+
 ---
 
 ## 2. Test environment
@@ -119,7 +125,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 #### BH-01 - Public bookings had no server-side rules · **Medium** (anonymous, but the damage is recoverable calendar integrity with no data exposure; re-rated from High per the rubric)
 - **Evidence:** `0000_migration.sql:154-170` (only check was `_starts < now()`); opening hours / open days / 21-day window lived only in `src/lib/format.ts` and `src/routes/book.$slug.tsx`. Tests (`audit/tests/public-booking.test.ts`): booking at 03:00, in 2099, and on a closed day were all accepted.
 - **Impact:** A client bypassing the UI could create appointments while the salon is closed, outside opening hours, or years in the future; the calendar stops reflecting reality.
-- **Fix / Status: Fixed** (`0001`, BH-01 + SE-02). A `timezone` column was added to `salons` (default `Europe/Istanbul`); `create_public_booking` now validates open day, opening hours, a 21-day advance window, and a 15-minute slot alignment (matching the UI step, anchored at `open_time`) **in the salon's time zone**. Tests green.
+- **Fix / Status: Fixed** (`0001`, BH-01 + SE-02). A `timezone` column was added to `salons` (default `Europe/Istanbul`); `create_public_booking` now validates open day, opening hours, a 21-day advance window, and a 15-minute slot alignment (matching the UI step, anchored at `open_time`) **in the salon's time zone**. Tests green. **Scope:** these rules bind the public booking path; owner/staff bookings created or moved inside the app are intentionally not constrained to opening hours (see [Design decisions](#design-decisions)).
 
 #### BH-02 - No rate limit / quota on public bookings · **High** (an anonymous caller can deny the core booking function by unbounded flooding; only partially mitigated; re-rated from Medium per the rubric)
 - **Evidence:** `audit/tests/public-booking.test.ts` - a single anonymous caller created 60/60 bookings unthrottled. No per-user AI limit either (`src/lib/ai.functions.ts`).
@@ -179,7 +185,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 
 #### SE-01 - Business rules live in the UI, not the server · **Medium**
 - Opening hours/days, the 21-day window, cancel/move, "staff own calendar", revenue - all in React. Same root cause as SEC-01/BH-01/SEC-03.
-- **Fix / Status: Fixed** as part of BH-01 (booking rules moved into the RPC) and SEC-03 (RLS).
+- **Fix / Status: Partially fixed.** The **public** booking rules were moved into the RPC (BH-01) and the role boundaries into RLS (SEC-03). Owner/staff cancel/move stays in the app by design (see [Design decisions](#design-decisions)). **Still in the browser:** revenue and popular-services aggregation, tracked separately as SE-03 (recommendation) - so this root-cause finding is not fully closed.
 
 #### SE-02 - Time zone: slots computed in the visitor's browser zone · **Medium**
 - **Evidence:** `src/lib/format.ts` used `date.setHours(...)` (browser-local); `open_time`/`close_time` are stored as bare wall-clock with no zone. Test (`audit/tests/timezone.test.ts`): the same "09:00" resolved to 06:00Z (Istanbul), 07:00Z (Berlin = 10:00 local), 13:00Z (New York = 16:00 local).

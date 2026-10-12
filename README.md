@@ -29,7 +29,7 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 | SEC-05 - no security response headers | Medium | Fixed |
 | SEC-06 - session token in localStorage | Medium | Recommendation |
 | SEC-10 - personal data flows (no retention/erasure/notice) | Medium | Partially fixed (notice added) |
-| SE-01 - business rules only in the UI | Medium | Fixed |
+| SE-01 - business rules only in the UI | Medium | Partially fixed (public rules server-side; revenue still client-side, see SE-03) |
 | SE-02 - booking slots computed in the visitor's time zone | Medium | Fixed |
 | SE-03 - no pagination; ~1000-row cap; client-side revenue | Medium | Recommendation |
 | SE-04 - data model (phone normalization, cascade, no audit trail) | Medium | Partially fixed |
@@ -43,6 +43,8 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 _ID prefixes: SE = software engineering (correctness and maintainability), SEC = security review, BH = abuse testing._
 
 _Severities follow a short rubric - see [Severity rubric](audit/AUDIT.md#severity-rubric) in the full report. Against it, BH-02 (calendar flooding, a denial of the core function) was re-rated up to High and BH-01 (recoverable out-of-policy bookings) down to Medium on 2026-10-12; the 2/11/5/1 totals are unchanged._
+
+_Design decision: BH-01's server-side rules (opening hours, open days, the 21-day window) bind the **public** booking page. Owners and staff can book, move and cancel outside opening hours and on closed days from inside the app on purpose - salons take off-hours and day-off appointments - so that path is deliberately unconstrained; overlapping appointments are still blocked on every path. See [Design decisions](audit/AUDIT.md#design-decisions)._
 
 ## What was done well
 
