@@ -19,17 +19,31 @@ The findings sit at a finer level: **business rules are enforced only in the bro
 | Severity | Count | Findings |
 |---|---|---|
 | **Critical** | 0 | - |
-| **High** | 2 | SEC-01, BH-01 |
-| **Medium** | 11 | BH-02, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-10, SE-01, SE-02, SE-03, SE-04 |
+| **High** | 2 | SEC-01, BH-02 |
+| **Medium** | 11 | BH-01, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-10, SE-01, SE-02, SE-03, SE-04 |
 | **Low** | 5 | SEC-07, SEC-09, SEC-11, SEC-12, SE-05 |
 | **Informational** | 1 | SEC-08 |
+
+### Severity rubric
+
+Findings are rated on one scale, by who could exploit the issue and what it affects (not by how hard it was to fix). Each finding below states its rating with a one-line rationale.
+
+| Level | Meaning |
+|---|---|
+| **Critical** | An anonymous, unauthenticated attacker can read or alter data across salons, or take over accounts, with little effort. |
+| **High** | An anonymous or low-privilege caller, by calling the API directly, can read or change another party's personal data, or deny a core business function (e.g. the booking calendar) - with no insider action. |
+| **Medium** | Needs a valid account, a specific piece of knowledge, or an insider step; or the impact is recoverable integrity/availability; or it is a defence-in-depth gap that requires a second flaw to exploit. |
+| **Low** | Limited or hard-to-reach impact, or a best-practice / hygiene / maintainability gap. |
+| **Informational** | No practical security impact; recorded for completeness. |
+
+**Re-rating note (2026-10-12):** against this rubric, **BH-02** (unbounded flooding of the booking calendar - denial of a core function by an anonymous caller) was raised from Medium to **High**, and **BH-01** (out-of-policy public bookings - recoverable integrity, no data exposure) was lowered from High to **Medium**. The High/Medium/Low/Info totals are unchanged (2 / 11 / 5 / 1).
 
 ### Top 5 (one line each)
 
 1. **SEC-01 (High)** - Without signing in, someone who knows a customer's phone number could change that customer's name and email.
-2. **BH-01 (High)** - Bookings had no server-side rules: a booking at 03:00, on a closed day, or in the year 2099 was accepted (rules lived only in the UI).
+2. **BH-02 (High)** - No rate limit on public bookings: a single anonymous visitor could flood the calendar and customer table and make the salon unusable.
 3. **SEC-03 (Medium)** - Staff could do more than the UI showed: delete customers (which also deleted their whole history) and read every booking in the salon.
-4. **BH-02 (Medium)** - No rate limit on public bookings: a single anonymous visitor could flood the calendar.
+4. **BH-01 (Medium)** - Public bookings had no server-side rules: a booking at 03:00, on a closed day, or in the year 2099 was accepted (rules lived only in the UI).
 5. **SEC-04 (Medium)** - No invite consent: an owner typing your email silently made you a member of that salon on your next sign-in, with read access to its customer data.
 
 ### Fix outcome
@@ -97,17 +111,17 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 
 ### Access control & abuse (SEC / BH)
 
-#### SEC-01 - A visitor could change an existing customer's name/email · **High**
+#### SEC-01 - A visitor could change an existing customer's name/email · **High** (anon can alter a customer's stored personal data through the public booking RPC with no insider action; only the phone number is needed)
 - **Evidence:** `drizzle/migrations/0000_migration.sql:161-163` - `create_public_booking` did `on conflict (salon_id, phone) do update set name = excluded.name, email = coalesce(...)`. Test: `audit/tests/public-booking.test.ts` and `audit/tests/http-e2e.test.ts` (`[#1]`). Reproduced: `Real Customer / real@example.test` became `HACKED NAME / attacker@evil.test` via an anonymous booking.
 - **Impact:** Anyone who knows (or guesses) a customer's phone number could overwrite that customer's stored name and email; a new booking attaches to that customer's history and notes.
 - **Fix / Status: Partially fixed** (`0001_audit_hardening.sql`, SEC-01). The on-conflict no longer overwrites name/email (`coalesce(nullif(customers.name,''), excluded.name)`); DB + HTTP `#1` tests are green. **Residual:** because phone is still the customer key, a booking made with a different name still links to the same phone-keyed customer (without changing it). A lightweight signal was added - `bookings.booked_name` records the name entered at booking time and the client screen shows "booked as ..." when it differs, so staff can verify. A full fix needs phone verification (OTP) at booking time (recommended).
 
-#### BH-01 - Public bookings had no server-side rules · **High**
+#### BH-01 - Public bookings had no server-side rules · **Medium** (anonymous, but the damage is recoverable calendar integrity with no data exposure; re-rated from High per the rubric)
 - **Evidence:** `0000_migration.sql:154-170` (only check was `_starts < now()`); opening hours / open days / 21-day window lived only in `src/lib/format.ts` and `src/routes/book.$slug.tsx`. Tests (`audit/tests/public-booking.test.ts`): booking at 03:00, in 2099, and on a closed day were all accepted.
 - **Impact:** A client bypassing the UI could create appointments while the salon is closed, outside opening hours, or years in the future; the calendar stops reflecting reality.
 - **Fix / Status: Fixed** (`0001`, BH-01 + SE-02). A `timezone` column was added to `salons` (default `Europe/Istanbul`); `create_public_booking` now validates open day, opening hours, a 21-day advance window, and a 15-minute slot alignment (matching the UI step, anchored at `open_time`) **in the salon's time zone**. Tests green.
 
-#### BH-02 - No rate limit / quota on public bookings · **Medium**
+#### BH-02 - No rate limit / quota on public bookings · **High** (an anonymous caller can deny the core booking function by unbounded flooding; only partially mitigated; re-rated from Medium per the rubric)
 - **Evidence:** `audit/tests/public-booking.test.ts` - a single anonymous caller created 60/60 bookings unthrottled. No per-user AI limit either (`src/lib/ai.functions.ts`).
 - **Impact:** An attacker could fill the calendar and customer table with fake records and make the salon unusable.
 - **Fix / Status: Partially fixed** (`0001`, BH-02). `create_public_booking` now enforces at most 5 upcoming bookings per phone and at most 10 bookings per salon per minute. Tests green. **Recommended (not done):** per-IP rate limiting and CAPTCHA (cannot live in the RPC because it is called directly from the browser; needs an edge layer) and a per-user/salon AI quota.
@@ -121,7 +135,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 - **Impact:** Any stylist could delete a customer and wipe that customer's entire history for the salon, and could see other staff members' clients.
 - **Fix / Status: Fixed** (`0001`, SEC-03). Customer writes/deletes are owner-only (`members read customers` for select + `owner manages customers` for all); bookings: each staff member reads only their own (`staff reads own bookings`), owner reads all. Tests green. Customer deletes are now owner-only (the FK cascade remains; a soft-delete to preserve history is recommended).
 
-#### SEC-04 - Invites auto-linked by email, without consent · **Medium**
+#### SEC-04 - Invites auto-linked by email, without consent · **Medium** (exposes a salon's customer data, but requires an owner to enter the email, so it is not attacker-triggered; a consent/access defect)
 - **Evidence:** `0000_migration.sql:110-117` (`claim_staff_invites`), called on every sign-in in `src/hooks/use-me.ts`. Test (`audit/tests/pentest.test.ts`): owner B added X's email as staff in Salon B; on X's sign-in, X became a member and could read Salon B's customers.
 - **Impact:** No acceptance step. An email typed by an owner silently binds that person to the salon on sign-in, exposing that salon's customer/booking/notes data to them.
 - **Fix / Status: Fixed** (`0001` + `use-me.ts` + `app-shell.tsx`, SEC-04). Auto-linking removed; new RPCs `list_staff_invites()` and `accept_staff_invite(_staff)` (guarded by an email match) plus an "Accept" button on onboarding. Tests green (no auto-join; cannot accept someone else's invite; invited user can accept their own).
@@ -176,7 +190,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 - **Evidence:** list queries in `src/hooks/use-bookings.ts` have no range/limit; the dashboard computes revenue client-side. Verified over HTTP: with 1100 bookings, the REST API returned only 1000 (`content-range: 0-999/1100`), so lists and the dashboard silently under-report past 1000 rows.
 - **Fix / Status: Left as recommendation.** Move revenue/stats to the server (RPC/SQL); add pagination and explicit ranges.
 
-#### SE-04 - Data model · **Medium/Low**
+#### SE-04 - Data model · **Medium**
 - Customer identity keyed by `(salon_id, phone)` with no normalization; cascade deletes; services keep a price/name snapshot on bookings (good); deactivating staff leaves their future bookings; no `updated_at`/audit trail.
 - **Fix / Status: Partially fixed.** Phone numbers are now normalized before storage (`normalize_phone()`), with uniqueness on the normalized value (test green: different formats map to one customer). **Recommended:** soft-delete and `updated_at`/audit trail.
 

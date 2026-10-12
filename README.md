@@ -21,9 +21,9 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 | Finding | Severity | Status |
 |---|---|---|
 | SEC-01 - visitor could change an existing customer's name/email | High | Partially fixed (overwrite blocked; OTP recommended) |
-| BH-01 - public bookings had no server-side rules (hours/days/window) | High | Fixed |
+| BH-02 - no rate limit on public bookings (calendar flooding) | High | Partially fixed (server quotas) |
+| BH-01 - public bookings had no server-side rules (hours/days/window) | Medium | Fixed |
 | SEC-03 - staff could edit/delete customers and read all bookings | Medium | Fixed |
-| BH-02 - no rate limit on public bookings | Medium | Partially fixed (server quotas) |
 | SEC-04 - invites auto-linked by email without consent | Medium | Fixed |
 | SEC-02 - no length/format validation on public bookings | Medium | Fixed |
 | SEC-05 - no security response headers | Medium | Fixed |
@@ -41,6 +41,8 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 | SEC-08 - RLS helper functions executable by anon | Info | Fixed |
 
 _ID prefixes: SE = software engineering (correctness and maintainability), SEC = security review, BH = abuse testing._
+
+_Severities follow a short rubric - see [Severity rubric](audit/AUDIT.md#severity-rubric) in the full report. Against it, BH-02 (calendar flooding, a denial of the core function) was re-rated up to High and BH-01 (recoverable out-of-policy bookings) down to Medium on 2026-10-12; the 2/11/5/1 totals are unchanged._
 
 ## What was done well
 

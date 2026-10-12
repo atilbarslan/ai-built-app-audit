@@ -34,6 +34,19 @@ const countRow = Object.entries(counts)
   .map(([k, v]) => `<div class="count"><div class="cn" style="color:${SEV[k] ?? "#555"}">${v}</div><div class="cl">${esc(k)}</div></div>`)
   .join("");
 
+const rubricSection =
+  d.severityRubric && d.severityRubric.length
+    ? `
+  <section class="page">
+    <h2>How severity is rated</h2>
+    <p>Every finding is rated on the same short scale, judged by who could exploit it and what it would affect:</p>
+    <table>
+      <tr><th>Level</th><th>What it means</th></tr>
+      ${d.severityRubric.map((r) => `<tr><td>${sevBadge(r.level)}</td><td>${esc(r.meaning)}</td></tr>`).join("")}
+    </table>
+  </section>`
+    : "";
+
 const repoUrl = (d.meta.repoUrl || "").replace(/\/+$/, "");
 const commitLink = (h) => (repoUrl ? `<a href="${repoUrl}/commit/${esc(h)}">${esc(h.slice(0, 7))}</a>` : `<code>${esc(h.slice(0, 7))}</code>`);
 
@@ -148,6 +161,7 @@ const html = `<!doctype html>
     <ul>${d.executiveSummary.topRisks.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
     <p class="muted">${esc(d.executiveSummary.testRun)}</p>
   </section>
+  ${rubricSection}
 
   <section class="page">
     <h2>What was done well</h2>

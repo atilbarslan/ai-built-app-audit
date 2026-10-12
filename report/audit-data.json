@@ -19,12 +19,19 @@
     "testRun": "Latest test run (2026-10-12): 42 tests, 41 passed, 1 skipped (an environment-dependent time-zone demonstration).",
     "topRisks": [
       "A stranger who knew a client's phone number could change that client's name and email.",
-      "Bookings could be created at closed times (03:00, closed days, or years ahead) by bypassing the app.",
+      "A single visitor could flood the booking calendar and client list with fake entries and make it unusable.",
       "Any staff member could delete a client and that client's entire history.",
-      "A single visitor could flood the calendar with fake bookings.",
+      "Bookings could be created at closed times (03:00, closed days, or years ahead) by bypassing the app.",
       "Typing someone's email into the staff list could silently give them access to your client data."
     ]
   },
+  "severityRubric": [
+    { "level": "Critical", "meaning": "An anonymous, unauthenticated attacker can read or alter data across salons, or take over accounts, with little effort." },
+    { "level": "High", "meaning": "An anonymous or low-privilege caller, by talking to the system directly, can read or change another party's personal data, or deny a core business function such as the booking calendar - with no insider help." },
+    { "level": "Medium", "meaning": "Needs a valid account, a specific piece of knowledge, or an insider step; or the damage is recoverable; or it is an extra layer of defence that only matters if another flaw is also present." },
+    { "level": "Low", "meaning": "Limited or hard-to-reach impact, or a good-practice, hygiene or maintainability gap." },
+    { "level": "Informational", "meaning": "No practical security impact; recorded for completeness." }
+  ],
   "strengths": [
     "Each salon's data is isolated from every other salon's (verified by tests).",
     "Anonymous visitors cannot read database tables directly; public actions go only through a small set of controlled functions.",
@@ -46,11 +53,22 @@
       "whatRemains": "A stranger who knows a client's phone number can still attach a booking to that client's record without changing it. Closing this fully needs a one-time code sent to the phone at booking time."
     },
     {
-      "id": "BH-01", "severity": "High", "status": "Fixed",
+      "id": "BH-02", "severity": "High", "status": "Partially fixed",
+      "title": "No limit on public bookings",
+      "found": "A single anonymous visitor could create an unlimited number of bookings; there was no rate limit or quota.",
+      "impact": "An attacker could fill the calendar and client table with fake entries and make the system unusable for the salon.",
+      "whatChanged": "We added two limits to the booking function: at most 5 upcoming bookings per phone number, and at most 10 bookings per salon per minute.",
+      "files": ["drizzle/migrations/0001_audit_hardening.sql"],
+      "commits": ["408b033"],
+      "howVerified": "Two tests in public-booking.test.ts (the per-phone cap and the per-salon burst) accepted the flood before and stop it after.",
+      "whatRemains": "Per-visitor rate limiting and a CAPTCHA need a layer in front of the app (the booking call comes straight from the browser), and the AI features still need a per-user usage limit."
+    },
+    {
+      "id": "BH-01", "severity": "Medium", "status": "Fixed",
       "title": "Bookings could be made at impossible times",
       "found": "The rules about opening hours, open days and how far ahead clients may book existed only in the app's screens. Calling the booking service directly, the only server check was that the time was not in the past.",
-      "impact": "Someone bypassing the app could create appointments while the salon is closed, outside opening hours, or years in the future. The calendar stops reflecting reality and staff cannot trust it.",
-      "whatChanged": "We added the booking rules to the server function that creates a booking: it now checks the salon's open days, opening hours, a 21-day limit, and that the chosen time lands on a valid 15-minute slot, all judged in the salon's own time zone. We also added a time-zone setting to each salon so the checks use the right clock.",
+      "impact": "Someone bypassing the app could create appointments while the salon is closed, outside opening hours, or years in the future. The public calendar stops reflecting reality and staff cannot trust it.",
+      "whatChanged": "We added the booking rules to the server function that creates a public booking: it now checks the salon's open days, opening hours, a 21-day limit, and that the chosen time lands on a valid 15-minute slot, all judged in the salon's own time zone. We also added a time-zone setting to each salon so the checks use the right clock.",
       "files": ["drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["28d4163"],
       "howVerified": "Tests '[#2] 03:00', '[#2] years in the future', '[#2] closed day' and '[BH-01] 15-minute grid' in public-booking.test.ts were accepted on the original app and are rejected after the change."
@@ -64,17 +82,6 @@
       "files": ["drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["3c08384"],
       "howVerified": "Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after."
-    },
-    {
-      "id": "BH-02", "severity": "Medium", "status": "Partially fixed",
-      "title": "No limit on public bookings",
-      "found": "A single anonymous visitor could create an unlimited number of bookings; there was no rate limit or quota.",
-      "impact": "An attacker could fill the calendar and client table with fake entries and make the system unusable for the salon.",
-      "whatChanged": "We added two limits to the booking function: at most 5 upcoming bookings per phone number, and at most 10 bookings per salon per minute.",
-      "files": ["drizzle/migrations/0001_audit_hardening.sql"],
-      "commits": ["408b033"],
-      "howVerified": "Two tests in public-booking.test.ts (the per-phone cap and the per-salon burst) accepted the flood before and stop it after.",
-      "whatRemains": "Per-visitor rate limiting and a CAPTCHA need a layer in front of the app (the booking call comes straight from the browser), and the AI features still need a per-user usage limit."
     },
     {
       "id": "SEC-04", "severity": "Medium", "status": "Fixed",
