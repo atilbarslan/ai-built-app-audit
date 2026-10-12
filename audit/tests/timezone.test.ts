@@ -13,6 +13,11 @@
 import { describe, it, expect } from "vitest";
 import { buildSlots } from "../../src/lib/format";
 
+// The REAL runtime zone (TZ env may be empty while the machine is on Istanbul,
+// which would make the "old bug" demo a false alarm). Read it properly.
+const REAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const ON_ISTANBUL = REAL_TZ === "Europe/Istanbul";
+
 describe("SE-02 - buildSlots time zone", () => {
   it("FIXED: 09:00 resolves to the salon's zone (Istanbul=06:00Z) for every viewer", () => {
     const date = new Date("2027-06-15T12:00:00Z");
@@ -24,15 +29,14 @@ describe("SE-02 - buildSlots time zone", () => {
     expect(firstIso).toBe("2027-06-15T06:00:00.000Z");
   });
 
-  it("documents the old bug: without timeZone the instant shifts with the viewer's zone", () => {
+  // Skipped when the machine itself is on Istanbul: there the legacy viewer-zone
+  // path coincides with the salon zone, so the old bug is invisible (not a failure).
+  it.skipIf(ON_ISTANBUL)("documents the old bug: without timeZone the instant shifts with the viewer's zone", () => {
     const date = new Date("2027-06-15T12:00:00Z");
     const slots = buildSlots({ date, open: "09:00:00", close: "19:00:00", duration: 30, busy: [] });
     const firstIso = slots[0].toISOString();
     // eslint-disable-next-line no-console
-    console.log(`[TZ=${process.env.TZ ?? "(system)"}] viewer-zone first slot -> ${firstIso}`);
-    // Only equals 06:00Z when the viewer happens to be in Istanbul.
-    const inIstanbul = (process.env.TZ ?? "") === "Europe/Istanbul";
-    if (inIstanbul) expect(firstIso).toBe("2027-06-15T06:00:00.000Z");
-    else expect(firstIso).not.toBe("2027-06-15T06:00:00.000Z");
+    console.log(`[real TZ=${REAL_TZ}] viewer-zone first slot -> ${firstIso}`);
+    expect(firstIso).not.toBe("2027-06-15T06:00:00.000Z");
   });
 });
