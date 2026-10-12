@@ -1,11 +1,11 @@
 -- Audit fixtures: fake personas + two salons for the salon-audit-demo test project.
 -- No real-person data. All emails use the reserved example.test domain.
 -- Users are created directly in auth.users (email pre-confirmed, no email sent)
--- because the project's HTTP admin API (GoTrue) was unreachable during the audit.
+-- so the seed is deterministic and sends no email.
 --
 -- Personas (fixed UUIDs for deterministic tests):
 --   A  owner of Salon A
---   A1 staff of Salon A (linked via claim_staff_invites)
+--   A1 staff of Salon A (linked directly; see step 6)
 --   A2 staff of Salon A (linked)
 --   B  owner of Salon B
 --   X  registered user, member of no salon

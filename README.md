@@ -55,7 +55,7 @@ Row-level security is enabled on all six tables and tenants are genuinely isolat
 ## Before and after
 
 - **`lovable-original`** branch - the app exactly as generated, untouched. The `.env` committed on this branch holds only a publishable key and points to a project that has since been deleted.
-- **`main`** branch - the audited app: one commit per finding, with schema changes in a new migration (`drizzle/migrations/0001_audit_hardening.sql`); the original `0000_migration.sql` is untouched.
+- **`main`** branch - the audited app: each fix in its own commit (a few closely related findings share one), with schema changes in a new migration (`drizzle/migrations/0001_audit_hardening.sql`); the original `0000_migration.sql` is untouched.
 - Diff: **[`lovable-original` -> `main`](https://github.com/atilbarslan/ai-built-app-audit/compare/lovable-original...main)**
 
 ## Reproduce

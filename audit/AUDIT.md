@@ -48,7 +48,7 @@ Findings are rated on one scale, by who could exploit the issue and what it affe
 
 ### Fix outcome
 
-Fixes were made test-first (a failing test that proves the finding, then the smallest change, then a passing test), one commit per finding. Schema changes live in a new migration, `drizzle/migrations/0001_audit_hardening.sql`; the original migration `0000_migration.sql` is untouched so the before/after comparison is preserved.
+Fixes were made test-first (a failing test that proves the finding, then the smallest change, then a passing test), each fix in its own commit (a few closely related findings share one). Schema changes live in a new migration, `drizzle/migrations/0001_audit_hardening.sql`; the original migration `0000_migration.sql` is untouched so the before/after comparison is preserved.
 
 | Finding | Status |
 |---|---|

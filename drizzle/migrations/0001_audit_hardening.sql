@@ -29,7 +29,7 @@ $$;
 -- =====================================================================
 -- SEC-01 : a public booking must NOT overwrite an existing customer's name/email.
 -- BH-01 : enforce the salon's open days, open hours, a 21-day advance window and
---         5-minute slot alignment server-side, all evaluated in the salon's time
+--         15-minute slot alignment server-side, all evaluated in the salon's time
 --         zone. (The browser UI alone could be bypassed by calling the RPC.)
 -- SEC-02 : bound the name/phone/email length and check the email shape.
 -- =====================================================================
