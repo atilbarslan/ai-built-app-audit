@@ -212,3 +212,13 @@ alter table public.services drop constraint if exists services_price_nonneg;
 alter table public.services add constraint services_price_nonneg check (price >= 0);
 alter table public.bookings drop constraint if exists bookings_price_nonneg;
 alter table public.bookings add constraint bookings_price_nonneg check (price >= 0);
+
+-- =====================================================================
+-- SEC-08 : the RLS helpers is_salon_owner/is_salon_member were EXECUTE-able by
+-- anon/public (harmless but unnecessary). Restrict to authenticated. RLS still
+-- works because every policy using them is `to authenticated`.
+-- =====================================================================
+revoke all on function public.is_salon_owner(uuid)  from public, anon;
+revoke all on function public.is_salon_member(uuid) from public, anon;
+grant execute on function public.is_salon_owner(uuid)  to authenticated;
+grant execute on function public.is_salon_member(uuid) to authenticated;
