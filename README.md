@@ -4,6 +4,8 @@ This repository is a security and quality audit of a salon/barbershop booking ap
 
 The app itself is a capable TanStack Start + Supabase application: multi-salon, public booking pages, staff calendars, an owner dashboard, customer notes, and two AI helpers.
 
+> **For non-technical readers:** the client-facing summary at [`report/audit-report.pdf`](report/audit-report.pdf) is written in plain language and is the best starting point. This README and [`audit/AUDIT.md`](audit/AUDIT.md) are the engineer's version. A few recurring terms: **RLS** (row-level security) = per-row database rules on who may see or change each row; **RPC** = a named database function the app calls directly; **CSP** (content security policy) = a browser rule limiting what a page may load or run.
+
 ## The prompt it was built from
 
 > Build me a booking app for hair salons and barbershops. Any salon owner should be able to sign up, create their salon, add their staff and their services with prices and durations. Each salon gets its own public booking page where customers pick a service, a staff member and a free time slot, and book with their name, phone number and email. Staff log in and see their own calendar for the day and week. The owner sees all bookings, can cancel or move them, and has a dashboard with revenue per week and the most popular services. Owners and staff can keep notes on each customer (preferences, past services, anything useful). Add an AI button on the customer page that summarises the customer's history and notes before their appointment, and an AI button that writes a friendly reminder message we can send by WhatsApp or SMS. Make it modern, clean and mobile friendly.
@@ -79,6 +81,8 @@ npx vitest run --config audit/vitest.config.ts                            # evid
 With only `0000` applied, the finding tests go **red** (they prove the finding); with `0001` applied they go **green** (they prove the fix).
 
 **Latest test run:** 2026-10-12 - 42 tests, 41 passed, 1 skipped. The skipped test is a time-zone demonstration that is only meaningful when the machine's own zone differs from the salon's; it is skipped when they are the same, so it does not false-alarm.
+
+**What you can verify without running anything:** the schema fixes are in [`drizzle/migrations/0001_audit_hardening.sql`](drizzle/migrations/0001_audit_hardening.sql), the tests are in [`audit/tests/`](audit/tests), and each finding is a single commit on the [`lovable-original` -> `main`](https://github.com/atilbarslan/ai-built-app-audit/compare/lovable-original...main) diff. Re-running the suite reproduces the red/green evidence but needs your own throwaway Supabase project and the connection values above - no credentials are shipped in this repo, so the test counts cannot be reproduced from the repo alone. The Lovable scan screenshot is from the audit date (October 2026).
 
 ## Reusable checklist
 
