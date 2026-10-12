@@ -1,4 +1,4 @@
-// Shared test helpers for the Chairside security audit.
+// Shared helpers for the security test suite (Chairside).
 //
 // These talk to the test Supabase project's Postgres DIRECTLY (postgres.js over
 // AUDIT_DATABASE_URL) and impersonate each persona exactly the way PostgREST /
@@ -8,8 +8,9 @@
 //     select set_config('request.jwt.claims', '<json>', true);
 //
 // auth.uid() reads request.jwt.claims->>'sub', so this reproduces RLS faithfully.
-// We use the direct DB path because the project's HTTP API gateway was returning
-// PGRST125 on every route during the audit (documented in AUDIT.md).
+// Talking to Postgres directly makes the role/claims impersonation above exact.
+// (A reachable HTTP API is not required to reproduce the access-control results;
+// a working Supabase URL additionally enables the HTTP end-to-end tests.)
 //
 // Every helper runs inside a transaction that is ALWAYS rolled back, so probes
 // never mutate shared state unless a test explicitly uses `persist`.

@@ -9,7 +9,7 @@
 // The table targets are Salon A's rows. Personas: anon, X (no salon),
 // A (owner A), A1/A2 (staff A), B (owner of the OTHER salon).
 //
-// The matrix is written to audit/rol-matrisi.md. Security-critical expectations
+// The matrix is written to audit/role-matrix.md. Security-critical expectations
 // are also asserted below; a FAILING assertion is a confirmed finding.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -106,20 +106,20 @@ beforeAll(async () => {
   await cellSet("customer_notes", "delete(A)", (p) => writeOp(p, `delete from public.customer_notes where id=$1`, [aNoteId]));
 
   // render markdown
-  let md = `# Rol matrisi - Salon A verisine erişim (test projesinde gerçek çağrılarla)\n\n`;
-  md += `Hedef satırlar **Salon A**'ya ait. Personalar: anon (ziyaretçi), X (hiçbir salona üye değil, kayıtlı), A (A sahibi), A1/A2 (A personeli), B (DİĞER salonun sahibi).\n\n`;
-  md += `Gösterim: \`✓N\` izin var (N satır etkilendi/görüldü) · \`·0\` hata yok ama 0 satır (RLS süzdü = fiilen engel) · \`✗\` reddedildi.\n\n`;
+  let md = `# Role matrix - access to Salon A data (real calls against the test project)\n\n`;
+  md += `Target rows belong to **Salon A**. Personas: anon (visitor), X (member of no salon, registered), A (owner A), A1/A2 (staff of A), B (owner of the OTHER salon).\n\n`;
+  md += `Legend: \`✓N\` allowed (N rows affected/visible) · \`·0\` no error but 0 rows (filtered by RLS = effectively denied) · \`✗\` rejected.\n\n`;
   for (const table of Object.keys(matrix)) {
     md += `### \`${table}\`\n\n`;
-    md += `| İşlem | ${PERSONAS.map((p) => PERSONA_LABEL[p]).join(" | ")} |\n`;
+    md += `| Operation | ${PERSONAS.map((p) => PERSONA_LABEL[p]).join(" | ")} |\n`;
     md += `|---|${PERSONAS.map(() => "---").join("|")}|\n`;
     for (const op of Object.keys(matrix[table])) {
       md += `| ${op} | ${PERSONAS.map((p) => matrix[table][op][p]).join(" | ")} |\n`;
     }
     md += `\n`;
   }
-  md += `\n_Not: \`select(A)\` anonim için tabloya DOĞRUDAN erişimdir; herkese açık okuma yalnızca \`get_public_salon\`/\`get_busy_times\` RPC'leriyle olur (ayrı test)._\n`;
-  writeFileSync(resolve(__dirname, "../rol-matrisi.md"), md);
+  md += `\n_Note: \`select(A)\` for anon is DIRECT table access; public reads happen only through the \`get_public_salon\`/\`get_busy_times\` RPCs (separate tests)._\n`;
+  writeFileSync(resolve(__dirname, "../role-matrix.md"), md);
 });
 
 afterAll(async () => {

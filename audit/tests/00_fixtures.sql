@@ -15,9 +15,8 @@
 begin;
 
 -- 1. clean any prior run (children cascade from salons/users)
--- Full clean of app tables so the seed is deterministic even if another run (or a
--- parallel audit sharing this test project) left different data behind. This is a
--- dedicated test project with only fake data.
+-- Full clean of app tables so the seed is deterministic even if a previous run
+-- left different data behind. This is a dedicated test project with only fake data.
 delete from public.bookings;
 delete from public.customer_notes;
 delete from public.customers;

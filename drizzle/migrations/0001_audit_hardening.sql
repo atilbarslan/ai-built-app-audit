@@ -1,6 +1,6 @@
--- Audit hardening migration (Asama 3).
--- Applied on top of 0000_migration.sql. 0000 is left untouched so the BEFORE
--- state is preserved. Every statement here is idempotent (create or replace /
+-- Security and correctness hardening migration.
+-- Applied on top of 0000_migration.sql, which is left untouched so the original
+-- (before) state is preserved. Every statement here is idempotent (create or replace /
 -- if not exists / drop policy if exists) so the file can be re-applied safely.
 --
 -- Each block is tagged with the finding id it addresses.
