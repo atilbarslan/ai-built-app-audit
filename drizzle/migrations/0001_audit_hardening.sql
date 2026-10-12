@@ -78,6 +78,21 @@ begin
     raise exception 'Please pick a valid time slot';
   end if;
 
+  -- BH-02: per-phone cap on upcoming bookings (stops one person flooding the book)
+  if (select count(*) from bookings b join customers c on c.id = b.customer_id
+        where c.salon_id = _salon and c.phone = trim(_phone)
+          and b.status = 'booked' and b.starts_at > now()) >= 5 then
+    raise exception 'You already have several upcoming bookings. Please contact the salon.';
+  end if;
+
+  -- BH-02: per-salon burst quota (stops a script creating many bookings at once).
+  -- IP-based limiting and CAPTCHA cannot live here because the booking RPC is
+  -- called straight from the browser; those stay recommendations in AUDIT.md.
+  if (select count(*) from bookings where salon_id = _salon
+        and created_at > now() - interval '1 minute') >= 10 then
+    raise exception 'Too many bookings right now. Please try again shortly.';
+  end if;
+
   insert into customers(salon_id, name, phone, email) values (_salon, trim(_name), trim(_phone), nullif(trim(_email),''))
     on conflict (salon_id, phone) do update
       -- SEC-01: keep the stored identity; only fill empty fields.

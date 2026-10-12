@@ -122,26 +122,48 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
     expect(res.booked, "booking on a closed day was accepted (open_days not enforced server-side)").toBe(false);
   });
 
-  it("[#2/#7] anon must be rate-limited when flooding bookings (DoS)", async () => {
+  it("[#2/BH-02] one phone cannot hold many upcoming bookings (per-phone cap)", async () => {
     const created = await rolledBack(async (t) => {
       await act(t, "anon");
       let n = 0;
-      // 60 distinct future slots, all should-be-blocked by some quota
-      const base = new Date(Date.now() + 5 * 864e5);
-      base.setUTCHours(9, 0, 0, 0);
-      for (let i = 0; i < 60; i++) {
-        const s = new Date(base.getTime() + i * 30 * 60000);
+      // valid in-hours slots on distinct open days, SAME phone
+      for (let i = 0; i < 10; i++) {
         try {
-          await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.ownerStaffA, starts: s.toISOString(), name: `Flood ${i}`, phone: `+90555${String(1000000 + i)}` });
+          await book(t, {
+            salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1,
+            starts: validSlotUtc(2 + i).toISOString(), name: "Repeat Caller", phone: "+905551234567",
+          });
           n++;
         } catch {
-          /* stop counting on first rejection */
+          break; // stop at first rejection
         }
       }
       return n;
     });
-    // SECURE expectation: some quota stops a single anon well before 60 bookings.
-    expect(created, `anon created ${created}/60 bookings with no rate limit`).toBeLessThan(60);
+    // SECURE expectation: the per-phone upcoming cap (5) stops it well before 10.
+    expect(created, `one phone created ${created} upcoming bookings`).toBeLessThanOrEqual(5);
+  });
+
+  it("[#2/BH-02] a salon cannot be flooded with bookings in a short burst (per-salon quota)", async () => {
+    const created = await rolledBack(async (t) => {
+      await act(t, "anon");
+      let n = 0;
+      // valid slots on distinct open days, DIFFERENT phones (defeats the per-phone cap)
+      for (let i = 0; i < 16; i++) {
+        try {
+          await book(t, {
+            salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1,
+            starts: validSlotUtc(2 + i).toISOString(), name: `Flood ${i}`, phone: `+90555${String(2000000 + i)}`,
+          });
+          n++;
+        } catch {
+          break;
+        }
+      }
+      return n;
+    });
+    // SECURE expectation: the per-salon burst quota (10/min) stops the flood.
+    expect(created, `salon accepted ${created} bookings in one burst`).toBeLessThanOrEqual(10);
   });
 
   it("[#2/SEC-02] create_public_booking must bound the customer name length", async () => {
