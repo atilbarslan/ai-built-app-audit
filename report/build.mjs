@@ -34,6 +34,28 @@ const countRow = Object.entries(counts)
   .map(([k, v]) => `<div class="count"><div class="cn" style="color:${SEV[k] ?? "#555"}">${v}</div><div class="cl">${esc(k)}</div></div>`)
   .join("");
 
+const repoUrl = (d.meta.repoUrl || "").replace(/\/+$/, "");
+const commitLink = (h) => (repoUrl ? `<a href="${repoUrl}/commit/${esc(h)}">${esc(h.slice(0, 7))}</a>` : `<code>${esc(h.slice(0, 7))}</code>`);
+
+function remediationBlock(f) {
+  if (/recommendation/i.test(f.status)) {
+    const steps = (f.howToFix || []).map((s) => `<li>${esc(s)}</li>`).join("");
+    return `<h3>How to fix</h3><ol>${steps}</ol>`;
+  }
+  const files = (f.files || []).map((p) => `<code>${esc(p)}</code>`).join(", ");
+  const commits = (f.commits || []).map(commitLink).join(", ");
+  const where = [files && `Files: ${files}`, commits && `Commit: ${commits}`].filter(Boolean).join("<br>");
+  const remains = f.whatRemains ? `<h3>What remains</h3><p>${esc(f.whatRemains)}</p>` : "";
+  return `
+    <h3>What we changed</h3>
+    <p>${esc(f.whatChanged)}</p>
+    <h3>Where</h3>
+    <p class="where">${where || "-"}</p>
+    <h3>How we verified it</h3>
+    <p>${esc(f.howVerified)}</p>
+    ${remains}`;
+}
+
 const findingPages = d.findings
   .map(
     (f, i) => `
@@ -47,8 +69,7 @@ const findingPages = d.findings
     <p>${esc(f.found)}</p>
     <h3>Why it matters for the business</h3>
     <p>${esc(f.impact)}</p>
-    <h3>${/recommendation/i.test(f.status) ? "How to fix" : "How it was fixed"}</h3>
-    <p>${esc(f.fix)}</p>
+    ${remediationBlock(f)}
     <div class="fnum">Finding ${i + 1} of ${d.findings.length}</div>
   </section>`,
   )
@@ -97,19 +118,22 @@ const html = `<!doctype html>
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e3e3e3; vertical-align: top; }
   th { color: var(--accent); text-transform: uppercase; font-size: 8.5pt; letter-spacing: .03em; }
   .muted { color: #666; font-size: 9.5pt; }
-  code { background: #f2f0ee; padding: 1px 4px; border-radius: 3px; font-size: 9.5pt; }
+  .where { font-size: 9.5pt; line-height: 1.7; }
+  a { color: var(--accent); text-decoration: none; }
+  code { background: #f2f0ee; padding: 1px 4px; border-radius: 3px; font-size: 9pt; word-break: break-all; }
 </style></head>
 <body>
 
   <section class="cover">
     <div class="bar"></div>
-    <div class="kicker">${esc(d.meta.preparedBy)}</div>
+    <div class="kicker">${esc(d.meta.kicker || "")}</div>
     <h1>${esc(d.meta.title)}</h1>
     <div class="app">${esc(d.meta.app)}</div>
     <div class="sub">${esc(d.meta.subtitle)}</div>
     <div class="meta">
       <div>${esc(d.meta.date)}</div>
-      <div class="conf">${esc(d.meta.confidentiality)}</div>
+      <div class="conf">${esc(d.meta.coverLabel)}</div>
+      <div>${esc(d.meta.preparedBy)}</div>
     </div>
   </section>
 

@@ -41,19 +41,22 @@
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e3e3e3; vertical-align: top; }
   th { color: var(--accent); text-transform: uppercase; font-size: 8.5pt; letter-spacing: .03em; }
   .muted { color: #666; font-size: 9.5pt; }
-  code { background: #f2f0ee; padding: 1px 4px; border-radius: 3px; font-size: 9.5pt; }
+  .where { font-size: 9.5pt; line-height: 1.7; }
+  a { color: var(--accent); text-decoration: none; }
+  code { background: #f2f0ee; padding: 1px 4px; border-radius: 3px; font-size: 9pt; word-break: break-all; }
 </style></head>
 <body>
 
   <section class="cover">
     <div class="bar"></div>
-    <div class="kicker">Independent pre-launch audit</div>
+    <div class="kicker">Pre-launch security and quality audit</div>
     <h1>Security and Quality Audit</h1>
     <div class="app">Chairside - salon and barbershop booking app</div>
     <div class="sub">Findings, business impact, and remediation</div>
     <div class="meta">
       <div>October 2026</div>
-      <div class="conf">Confidential - prepared for the application owner</div>
+      <div class="conf">Sample report - published as a portfolio example</div>
+      <div>Prepared by Atıl Arslan</div>
     </div>
   </section>
 
@@ -63,7 +66,7 @@
     <div class="counts"><div class="count"><div class="cn" style="color:#7a1020">0</div><div class="cl">Critical</div></div><div class="count"><div class="cn" style="color:#b23b2e">2</div><div class="cl">High</div></div><div class="count"><div class="cn" style="color:#b7791f">11</div><div class="cl">Medium</div></div><div class="count"><div class="cn" style="color:#4a6b8a">5</div><div class="cl">Low</div></div><div class="count"><div class="cn" style="color:#5a6b5a">1</div><div class="cl">Informational</div></div></div>
     <p>The app is built on solid foundations. The database keeps each salon's data separate, visitors cannot read the tables directly, and the system already prevents two bookings landing on the same person at the same time. The automated security scan offered by the build platform reported no issues at the time of the audit (October 2026); that same report notes it cannot catch every possible risk.</p>
     <p>The issues found are subtler than missing basics: the booking and permission rules were enforced only in the app's screens, not on the server. Anyone who talks to the system directly, bypassing the screens, could do things the screens never allow. That is the thread running through the most serious findings.</p>
-    <div class="callout">Of 19 findings, the 2 High and most Medium issues are fixed or materially reduced; the rest are documented with clear recommendations. Fixes were made so that each one is backed by an automated test. The original app is preserved unchanged for before-and-after comparison.</div>
+    <div class="callout">Of 19 findings, the 2 High and most Medium issues are fixed or materially reduced; the rest are documented with clear recommendations. Every fix is backed by an automated test that failed before the change and passes after it. The original app is preserved unchanged for before-and-after comparison.</div>
     <h3>The biggest risks in plain terms</h3>
     <ul><li>A stranger who knew a client's phone number could change that client's name and email.</li><li>Bookings could be created at closed times (03:00, closed days, or years ahead) by bypassing the app.</li><li>Any staff member could delete a client and that client's entire history.</li><li>A single visitor could flood the calendar with fake bookings.</li><li>Typing someone's email into the staff list could silently give them access to your client data.</li></ul>
     <p class="muted">Latest test run (2026-10-12): 42 tests, 41 passed, 1 skipped (an environment-dependent time-zone demonstration).</p>
@@ -88,8 +91,14 @@
     <p>The public booking flow identified clients by phone number. A booking made with an existing client's phone number overwrote that client's stored name and email with whatever was typed.</p>
     <h3>Why it matters for the business</h3>
     <p>Anyone who knew (or guessed) a client's phone number could rename that client and change their email, and the new booking attached to that client's history and notes. This corrupts the client list and could be used to impersonate or harass a client.</p>
-    <h3>How it was fixed</h3>
-    <p>The booking flow no longer overwrites an existing client's name or email. The name entered at booking time is now stored separately and shown to staff when it differs from the client on file, so staff can verify it is the same person. Fully preventing a stranger from attaching to a known phone number requires a phone verification step (a one-time code) at booking, which is recommended as a next step.</p>
+    
+    <h3>What we changed</h3>
+    <p>We changed the rule that saves a client from a public booking so it never overwrites a client who already exists: it keeps the stored name and email and only fills in blanks. We also added a field that records the name typed at booking time and show it to staff on the client screen when it differs, so they can check it is the same person.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code>, <code>src/routes/_authenticated/customers.$id.tsx</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/17f8c81">17f8c81</a>, <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/255d78d">255d78d</a></p>
+    <h3>How we verified it</h3>
+    <p>Test '[#1]' in public-booking.test.ts and http-e2e.test.ts failed on the original app (the client's name was overwritten) and passes after the change (the stored name is unchanged).</p>
+    <h3>What remains</h3><p>A stranger who knows a client's phone number can still attach a booking to that client's record without changing it. Closing this fully needs a one-time code sent to the phone at booking time.</p>
     <div class="fnum">Finding 1 of 19</div>
   </section>
   <section class="page finding">
@@ -102,8 +111,14 @@
     <p>The rules about opening hours, open days and how far ahead clients may book existed only in the app's screens. Calling the booking service directly, the only server check was that the time was not in the past.</p>
     <h3>Why it matters for the business</h3>
     <p>Someone bypassing the app could create appointments while the salon is closed, outside opening hours, or years in the future. The calendar stops reflecting reality and staff cannot trust it.</p>
-    <h3>How it was fixed</h3>
-    <p>The server now enforces the salon's open days, opening hours, a 21-day booking window, and valid time slots - all evaluated in the salon's own time zone.</p>
+    
+    <h3>What we changed</h3>
+    <p>We added the booking rules to the server function that creates a booking: it now checks the salon's open days, opening hours, a 21-day limit, and that the chosen time lands on a valid 15-minute slot, all judged in the salon's own time zone. We also added a time-zone setting to each salon so the checks use the right clock.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/28d4163">28d4163</a></p>
+    <h3>How we verified it</h3>
+    <p>Tests '[#2] 03:00', '[#2] years in the future', '[#2] closed day' and '[BH-01] 15-minute grid' in public-booking.test.ts were accepted on the original app and are rejected after the change.</p>
+    
     <div class="fnum">Finding 2 of 19</div>
   </section>
   <section class="page finding">
@@ -116,8 +131,14 @@
     <p>Any staff member could edit and delete client records, and could read every booking in the salon. Deleting a client also deleted that client's entire booking and note history.</p>
     <h3>Why it matters for the business</h3>
     <p>A single stylist could wipe a client's whole history, or browse other staff members' clients - well beyond 'see your own calendar'.</p>
-    <h3>How it was fixed</h3>
-    <p>Staff can now read clients (needed to keep notes) but only the owner can change or delete them. Each staff member now sees only their own appointments; the owner still sees all.</p>
+    
+    <h3>What we changed</h3>
+    <p>We changed the database access rules: staff may read clients (needed to keep notes), but only the owner may add, change or delete them; and each staff member can read only the bookings assigned to them, while the owner reads all.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/3c08384">3c08384</a></p>
+    <h3>How we verified it</h3>
+    <p>Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after.</p>
+    
     <div class="fnum">Finding 3 of 19</div>
   </section>
   <section class="page finding">
@@ -130,8 +151,14 @@
     <p>A single anonymous visitor could create an unlimited number of bookings; there was no rate limit or quota.</p>
     <h3>Why it matters for the business</h3>
     <p>An attacker could fill the calendar and client table with fake entries and make the system unusable for the salon.</p>
-    <h3>How it was fixed</h3>
-    <p>The server now limits how many upcoming bookings a single phone number can hold and how many bookings a salon accepts in a short window. Network-level rate limiting per visitor and a CAPTCHA are recommended as an additional layer, along with a usage limit on the AI features.</p>
+    
+    <h3>What we changed</h3>
+    <p>We added two limits to the booking function: at most 5 upcoming bookings per phone number, and at most 10 bookings per salon per minute.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/408b033">408b033</a></p>
+    <h3>How we verified it</h3>
+    <p>Two tests in public-booking.test.ts (the per-phone cap and the per-salon burst) accepted the flood before and stop it after.</p>
+    <h3>What remains</h3><p>Per-visitor rate limiting and a CAPTCHA need a layer in front of the app (the booking call comes straight from the browser), and the AI features still need a per-user usage limit.</p>
     <div class="fnum">Finding 4 of 19</div>
   </section>
   <section class="page finding">
@@ -144,8 +171,14 @@
     <p>Adding an email address to the staff list silently linked that person to the salon the next time they signed in, with no acceptance step.</p>
     <h3>Why it matters for the business</h3>
     <p>A person could be given access to a salon's client data without ever agreeing to join, and the behaviour was unpredictable when an email belonged to more than one salon.</p>
-    <h3>How it was fixed</h3>
-    <p>Invitations now require explicit acceptance: the invited person sees a pending invitation and must click Accept, and only an invitation addressed to their own email can be accepted.</p>
+    
+    <h3>What we changed</h3>
+    <p>We removed the automatic linking on sign-in and added an explicit invitation: the invited person sees a pending invite and must click Accept, and only an invite addressed to their own email can be accepted.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code>, <code>src/hooks/use-me.ts</code>, <code>src/components/app-shell.tsx</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/2ade4e1">2ade4e1</a></p>
+    <h3>How we verified it</h3>
+    <p>Tests in pentest.test.ts confirm sign-in no longer auto-joins, a different email cannot accept the invite, and the invited person can accept their own.</p>
+    
     <div class="fnum">Finding 5 of 19</div>
   </section>
   <section class="page finding">
@@ -158,8 +191,14 @@
     <p>The booking form accepted names, phone numbers and emails of unlimited length and with no format checking (a 20,000-character name was accepted).</p>
     <h3>Why it matters for the business</h3>
     <p>Oversized or malformed data could break staff screens and outgoing messages and bloat the database.</p>
-    <h3>How it was fixed</h3>
-    <p>The server now checks the length and basic format of the name, phone number and email.</p>
+    
+    <h3>What we changed</h3>
+    <p>We added length and basic format checks to the booking function for the name, phone number and email.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/28d4163">28d4163</a></p>
+    <h3>How we verified it</h3>
+    <p>Test '[#2/SEC-02] name length' in public-booking.test.ts accepted a 20,000-character name before and rejects it after.</p>
+    
     <div class="fnum">Finding 6 of 19</div>
   </section>
   <section class="page finding">
@@ -172,8 +211,14 @@
     <p>The app sent none of the standard browser security headers (such as a content security policy or anti-framing header).</p>
     <h3>Why it matters for the business</h3>
     <p>The site could be embedded invisibly in a malicious page to trick clients (clickjacking), and browser defences against injected scripts were weaker than they should be.</p>
-    <h3>How it was fixed</h3>
-    <p>Every response now carries a content security policy and the other standard security headers. The policy was verified against the running app so it protects without breaking any feature.</p>
+    
+    <h3>What we changed</h3>
+    <p>We added a content security policy and the other standard security headers to every server response, and allowed the specific resources the app actually needs so nothing breaks.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>src/lib/security-headers.ts</code>, <code>src/server.ts</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/2865255">2865255</a></p>
+    <h3>How we verified it</h3>
+    <p>Test in security-headers.test.ts checks the headers are present, and a live check confirmed the booking and sign-in pages load with no policy violations.</p>
+    
     <div class="fnum">Finding 7 of 19</div>
   </section>
   <section class="page finding">
@@ -186,8 +231,7 @@
     <p>The login session token is kept in the browser's local storage.</p>
     <h3>Why it matters for the business</h3>
     <p>If a script-injection flaw ever occurred, an attacker could read the session and take over the account.</p>
-    <h3>How to fix</h3>
-    <p>Recommended: store the session in a secure, script-inaccessible cookie. The content security policy added above reduces the risk in the meantime.</p>
+    <h3>How to fix</h3><ol><li>Store the login session in a secure, HttpOnly cookie so page scripts cannot read it.</li><li>Keep the content security policy added in SEC-05 in place as an added layer.</li></ol>
     <div class="fnum">Finding 8 of 19</div>
   </section>
   <section class="page finding">
@@ -200,8 +244,14 @@
     <p>Client personal data (name, phone, email, notes, visit history) is sent to an outside AI provider for the summary and reminder features. There was no stated retention period, no deletion or export path, and no privacy notice on the booking page.</p>
     <h3>Why it matters for the business</h3>
     <p>Clients' personal data leaves the salon's system with no stated handling, and the salon cannot easily honour a request to delete someone's data.</p>
-    <h3>How it was fixed</h3>
-    <p>A short privacy notice was added to the booking page. Recommended: minimise what is sent to the AI, define a retention period with automatic deletion, and add a way to export or erase a client's data on request.</p>
+    
+    <h3>What we changed</h3>
+    <p>We added a short privacy notice to the public booking page telling clients their details are shared only with the salon and how to ask for changes or deletion.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>src/routes/book.$slug.tsx</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/a5937aa">a5937aa</a></p>
+    <h3>How we verified it</h3>
+    <p>Confirmed on the booking page.</p>
+    <h3>What remains</h3><p>Define a retention period with automatic deletion, add a way to export or erase a client's data on request, and reduce how much client data is sent to the AI.</p>
     <div class="fnum">Finding 9 of 19</div>
   </section>
   <section class="page finding">
@@ -214,8 +264,14 @@
     <p>Opening hours, the booking window, cancel and move rules and revenue all lived in the browser, not on the server.</p>
     <h3>Why it matters for the business</h3>
     <p>Anyone bypassing the app screens could ignore the salon's rules.</p>
-    <h3>How it was fixed</h3>
-    <p>The booking rules were moved onto the server and into the database access rules (see BH-01 and SEC-03).</p>
+    
+    <h3>What we changed</h3>
+    <p>The booking rules that lived only in the screens were moved onto the server function and into the database access rules.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/28d4163">28d4163</a>, <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/3c08384">3c08384</a></p>
+    <h3>How we verified it</h3>
+    <p>Covered by the BH-01 and SEC-03 tests, which exercise the same rules on the server.</p>
+    
     <div class="fnum">Finding 10 of 19</div>
   </section>
   <section class="page finding">
@@ -228,8 +284,14 @@
     <p>The list of free time slots was calculated using the visitor's device time zone, while the salon's opening hours are stored without a time zone.</p>
     <h3>Why it matters for the business</h3>
     <p>A client in another region saw shifted times and could book a slot that is not actually open at the salon; two clients in different regions picking the same time sent two different real times.</p>
-    <h3>How it was fixed</h3>
-    <p>Slots are now computed in the salon's own time zone, so every visitor sees the same real opening times.</p>
+    
+    <h3>What we changed</h3>
+    <p>We compute the available time slots in the salon's time zone instead of the visitor's, and pass the salon's time zone through to the booking page.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>src/lib/format.ts</code>, <code>src/routes/book.$slug.tsx</code>, <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/28d4163">28d4163</a></p>
+    <h3>How we verified it</h3>
+    <p>Test in timezone.test.ts passes in three different time zones (it produced shifted times before the change).</p>
+    
     <div class="fnum">Finding 11 of 19</div>
   </section>
   <section class="page finding">
@@ -242,8 +304,7 @@
     <p>Lists and the dashboard have no paging and silently stop at the first 1000 rows; revenue is added up in the browser.</p>
     <h3>Why it matters for the business</h3>
     <p>As the salon grows, the dashboard and lists will quietly show incomplete or wrong totals.</p>
-    <h3>How to fix</h3>
-    <p>Recommended: calculate totals and popular services on the server and add paging to the lists.</p>
+    <h3>How to fix</h3><ol><li>Calculate revenue and popular services on the server rather than in the browser.</li><li>Add paging to the client and booking lists so nothing is cut off at 1000 rows.</li></ol>
     <div class="fnum">Finding 12 of 19</div>
   </section>
   <section class="page finding">
@@ -256,8 +317,14 @@
     <p>Clients are identified by phone number with no normalisation (so '+90...', '0...' and spaced variants could create duplicates), deletes cascade, and there is no record of who changed what.</p>
     <h3>Why it matters for the business</h3>
     <p>The same client entered two ways becomes two records, and deletions remove history with no audit trail.</p>
-    <h3>How it was fixed</h3>
-    <p>Phone numbers are now normalised to one format before saving, and uniqueness is enforced on the normalised value. Recommended: soft-delete (hide rather than erase) and an audit trail.</p>
+    
+    <h3>What we changed</h3>
+    <p>We normalise phone numbers to one format before saving, so the same client typed different ways becomes a single record.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/a5937aa">a5937aa</a></p>
+    <h3>How we verified it</h3>
+    <p>Test '[Item 12]' in public-booking.test.ts confirms two formats of the same number map to one client.</p>
+    <h3>What remains</h3><p>Switch deletes to soft-delete (hide rather than erase) and add an audit trail of who changed what and when.</p>
     <div class="fnum">Finding 13 of 19</div>
   </section>
   <section class="page finding">
@@ -270,8 +337,14 @@
     <p>A salon's public booking-link (slug) was not sanitised when set directly through the service, bypassing the app's cleanup.</p>
     <h3>Why it matters for the business</h3>
     <p>Broken or confusing public booking links.</p>
-    <h3>How it was fixed</h3>
-    <p>The server now normalises the booking-link and enforces a safe format; it also now rejects negative prices.</p>
+    
+    <h3>What we changed</h3>
+    <p>We clean the salon booking-link on the server and enforce a safe format, and reject negative prices as part of the same hardening.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/cff6b22">cff6b22</a></p>
+    <h3>How we verified it</h3>
+    <p>Tests in pentest.test.ts confirm a malformed link is normalised and a negative price is rejected.</p>
+    
     <div class="fnum">Finding 14 of 19</div>
   </section>
   <section class="page finding">
@@ -284,8 +357,14 @@
     <p>Client name and notes flow directly into the AI prompt, and the AI-written reminder is sent from the salon's own phone number.</p>
     <h3>Why it matters for the business</h3>
     <p>Someone could try to steer the reminder message (for example to insert a link) by writing instructions into a client's note or name.</p>
-    <h3>How it was fixed</h3>
-    <p>Untrusted text is now clearly marked as data rather than instructions, and links are stripped from the reminder before it can be sent. A working exploit was not reproduced; this hardens the design.</p>
+    
+    <h3>What we changed</h3>
+    <p>We wrap the client's name and notes as data (clearly marked as not instructions) before sending them to the AI, and strip any links out of the reminder before it can be sent.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>src/lib/ai-sanitize.ts</code>, <code>src/lib/ai.functions.ts</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/74b21bb">74b21bb</a></p>
+    <h3>How we verified it</h3>
+    <p>Test in ai-sanitize.test.ts removes a link smuggled into a simulated AI reply and keeps normal text.</p>
+    
     <div class="fnum">Finding 15 of 19</div>
   </section>
   <section class="page finding">
@@ -298,8 +377,7 @@
     <p>An environment file was committed to the generated project (it contained only the public key), and there are development-only dependency advisories.</p>
     <h3>Why it matters for the business</h3>
     <p>Low: the committed key is public by design, and the advisories affect only the development tools, not the live app.</p>
-    <h3>How to fix</h3>
-    <p>Recommended: keep environment files out of the repository and update the affected development tool.</p>
+    <h3>How to fix</h3><ol><li>Remove environment files from the repository and load secrets from the environment instead.</li><li>Update the development tool flagged by the dependency check.</li></ol>
     <div class="fnum">Finding 16 of 19</div>
   </section>
   <section class="page finding">
@@ -312,8 +390,7 @@
     <p>Password strength, email confirmation and protection against revealing which emails are registered were all in good shape. However, repeated wrong-password attempts were not throttled in the test project.</p>
     <h3>Why it matters for the business</h3>
     <p>Without a limit, automated password-guessing against an account is easier.</p>
-    <h3>How to fix</h3>
-    <p>Recommended: confirm the production setting and enable rate limiting or temporary lockout after repeated failures.</p>
+    <h3>How to fix</h3><ol><li>Confirm the production password and sign-in settings.</li><li>Enable a limit or a temporary lockout after repeated failed sign-in attempts.</li></ol>
     <div class="fnum">Finding 17 of 19</div>
   </section>
   <section class="page finding">
@@ -326,8 +403,7 @@
     <p>The generated app shipped with a single automated test and some loosely-typed code.</p>
     <h3>Why it matters for the business</h3>
     <p>Lower confidence that future changes will not quietly break something.</p>
-    <h3>How to fix</h3>
-    <p>Recommended: broaden automated test coverage and tighten types. This audit adds a runnable security test suite as a starting point.</p>
+    <h3>How to fix</h3><ol><li>Add automated tests that cover the main booking and account flows.</li><li>Replace loosely-typed code with explicit types.</li><li>Use the security test suite added by this audit as a starting point.</li></ol>
     <div class="fnum">Finding 18 of 19</div>
   </section>
   <section class="page finding">
@@ -340,8 +416,14 @@
     <p>Two internal helper functions could be called by anonymous visitors (harmless: they return nothing useful to an anonymous caller).</p>
     <h3>Why it matters for the business</h3>
     <p>No practical impact; addressed as defence in depth.</p>
-    <h3>How it was fixed</h3>
-    <p>Access to the helper functions is now restricted to signed-in users.</p>
+    
+    <h3>What we changed</h3>
+    <p>We removed anonymous access to the two helper functions, leaving them available only to signed-in users.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/254e527">254e527</a></p>
+    <h3>How we verified it</h3>
+    <p>Test in pentest.test.ts confirms an anonymous caller can no longer run the helper.</p>
+    
     <div class="fnum">Finding 19 of 19</div>
   </section>
 
