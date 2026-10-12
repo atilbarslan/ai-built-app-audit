@@ -69,6 +69,43 @@ describe("SEC/BH - public booking RPC (anonymous)", () => {
     expect(result.email).toBe("real@example.test");
   });
 
+  it("[SEC-01 residual] a booking with a different name is recorded as booked_name (not merged into the customer)", async () => {
+    const res = await rolledBack(async (t) => {
+      await act(t, "A");
+      await t.unsafe(
+        `insert into public.customers(salon_id,name,phone,email) values ($1,'Residual Real','+905551113333','rr@example.test')`,
+        [ids.salonA],
+      );
+      await act(t, "anon");
+      const [b] = await book(t, {
+        salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1,
+        starts: validSlotUtc(5).toISOString(), name: "Someone Else", phone: "+905551113333",
+      });
+      await act(t, "A");
+      const [bk] = await t.unsafe(`select booked_name from public.bookings where id=$1`, [b.id]);
+      const [cust] = await t.unsafe(`select name from public.customers where salon_id=$1 and phone='+905551113333'`, [ids.salonA]);
+      return { booked_name: bk.booked_name as string, customer_name: cust.name as string };
+    });
+    // customer identity untouched, but the entered name is captured for staff to see
+    expect(res.customer_name).toBe("Residual Real");
+    expect(res.booked_name).toBe("Someone Else");
+  });
+
+  it("[BH-01] slot must be on the 15-minute grid (off-grid time rejected, on-grid accepted)", async () => {
+    const res = await rolledBack(async (t) => {
+      await act(t, "anon");
+      const onGrid = validSlotUtc(6, 11); // 11:00 == open(09:00)+120min -> multiple of 15
+      const offGrid = new Date(onGrid.getTime() + 7 * 60000); // +7 minutes -> off the grid
+      let onOk = false;
+      let offOk = false;
+      try { await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA1, starts: onGrid.toISOString(), phone: "+905550000061" }); onOk = true; } catch { /* */ }
+      try { await book(t, { salon: ids.salonA, service: ids.serviceA, staff: ids.staffA2, starts: offGrid.toISOString(), phone: "+905550000062" }); offOk = true; } catch { /* */ }
+      return { onOk, offOk };
+    });
+    expect(res.onOk, "on-grid 11:00 slot was rejected").toBe(true);
+    expect(res.offOk, "off-grid 11:07 slot was accepted").toBe(false);
+  });
+
   it("[#2] anon must NOT be able to book at 03:00 (outside the salon's open hours)", async () => {
     const res = await rolledBack(async (t) => {
       await act(t, "anon");

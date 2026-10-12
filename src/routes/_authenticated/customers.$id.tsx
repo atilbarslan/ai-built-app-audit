@@ -183,7 +183,7 @@ function CustomerPage() {
             {past.length === 0 && <p className="text-sm text-muted-foreground">No past visits.</p>}
             {past.map((b) => (
               <div key={b.id} className="flex items-center justify-between py-2.5 text-sm">
-                <span><span className="font-medium">{fmtDateTime(b.starts_at)}</span> · {b.service_name} · <span className="text-muted-foreground">{(b.staff as { name: string } | null)?.name}</span></span>
+                <span><span className="font-medium">{fmtDateTime(b.starts_at)}</span> · {b.service_name} · <span className="text-muted-foreground">{(b.staff as { name: string } | null)?.name}</span>{b.booked_name && b.booked_name !== c.name && <span className="text-amber-600" title="Name entered at booking differs from this client; verify it is the same person"> booked as {b.booked_name}</span>}</span>
                 {b.status === "cancelled" ? <Badge variant="secondary">Cancelled</Badge> : <span className="text-muted-foreground">{money(b.price)}</span>}
               </div>
             ))}

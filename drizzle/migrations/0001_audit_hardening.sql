@@ -11,6 +11,9 @@
 -- matching the app's existing assumption.
 -- =====================================================================
 alter table public.salons add column if not exists timezone text not null default 'Europe/Istanbul';
+-- SEC-01 residual: the name entered on each public booking (may differ from the
+-- stored customer name when someone reuses a known phone).
+alter table public.bookings add column if not exists booked_name text;
 
 -- get_public_salon must expose timezone so the booking page computes slots in it.
 create or replace function public.get_public_salon(_slug text) returns json
@@ -74,8 +77,10 @@ begin
     raise exception 'That time is outside opening hours';
   end if;
 
-  -- BH-01: slot alignment (no 03:17:33 style times); allow the UI's 15-min grid
-  if extract(second from _local) <> 0 or (extract(minute from _local)::int % 5) <> 0 then
+  -- BH-01: slot must sit on the salon's 15-minute grid, anchored at open_time
+  -- (matches the booking UI's 15-minute step exactly).
+  if extract(second from _local) <> 0
+     or (extract(epoch from (_local::time - _sal.open_time)) / 60)::int % 15 <> 0 then
     raise exception 'Please pick a valid time slot';
   end if;
 
@@ -101,8 +106,11 @@ begin
           email = coalesce(customers.email, excluded.email)
     returning id into _cust;
   begin
-    insert into bookings(salon_id, staff_id, service_id, customer_id, service_name, price, starts_at, ends_at)
-      values (_salon, _staff, _service, _cust, _svc.name, _svc.price, _starts, _ends)
+    -- SEC-01 residual: record the name entered at booking time. When it differs
+    -- from the stored customer name, staff can see the booking may be from someone
+    -- else reusing a known phone (the customer record itself is never overwritten).
+    insert into bookings(salon_id, staff_id, service_id, customer_id, service_name, price, starts_at, ends_at, booked_name)
+      values (_salon, _staff, _service, _cust, _svc.name, _svc.price, _starts, _ends, trim(_name))
       returning id into _id;
   exception when exclusion_violation then
     raise exception 'Sorry, that time was just taken. Please pick another slot.';
