@@ -15,8 +15,17 @@
 begin;
 
 -- 1. clean any prior run (children cascade from salons/users)
+-- Full clean of app tables so the seed is deterministic even if another run (or a
+-- parallel audit sharing this test project) left different data behind. This is a
+-- dedicated test project with only fake data.
+delete from public.bookings;
+delete from public.customer_notes;
+delete from public.customers;
+delete from public.services;
+delete from public.staff;
+delete from public.salons;
+delete from auth.identities where identity_data->>'email' like '%@example.test';
 delete from auth.users where email like '%@example.test';
-delete from public.salons where slug in ('salon-a','salon-b');
 
 -- 2. create auth users (email-confirmed, password set for completeness)
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
@@ -28,6 +37,16 @@ values
   ('00000000-0000-0000-0000-000000000000','33333333-3333-3333-3333-333333333333','authenticated','authenticated','staffa2@example.test', extensions.crypt('Test-Passw0rd!3', extensions.gen_salt('bf')), now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, false),
   ('00000000-0000-0000-0000-000000000000','44444444-4444-4444-4444-444444444444','authenticated','authenticated','ownerb@example.test', extensions.crypt('Test-Passw0rd!4', extensions.gen_salt('bf')), now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, false),
   ('00000000-0000-0000-0000-000000000000','55555555-5555-5555-5555-555555555555','authenticated','authenticated','userx@example.test', extensions.crypt('Test-Passw0rd!5', extensions.gen_salt('bf')), now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, false);
+
+-- GoTrue stores these token columns as '' (empty string), not NULL. SQL-inserted
+-- users with NULLs make the password grant 500 ("unexpected_failure"), so normalize
+-- them to '' so the personas can actually sign in over HTTP (needed for E2E + a clean
+-- email-enumeration test).
+update auth.users set
+  confirmation_token = '', recovery_token = '', email_change_token_new = '',
+  email_change = '', email_change_token_current = '', phone_change = '',
+  phone_change_token = '', reauthentication_token = ''
+where email like '%@example.test';
 
 -- matching auth.identities rows (GoTrue expects one per email user)
 insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)

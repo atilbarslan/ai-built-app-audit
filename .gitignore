@@ -35,3 +35,5 @@ dist-ssr
 .env.audit
 .audit-tmp/
 audit/node_modules/
+supabase/.temp/
+package-lock.json

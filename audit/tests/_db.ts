@@ -34,6 +34,30 @@ function auditDatabaseUrl(): string {
 
 export const sql = postgres(auditDatabaseUrl(), { max: 1, prepare: false, onnotice: () => {} });
 
+/** Read a var from process.env or .env.audit (for the HTTP client config). */
+export function auditEnv(name: string): string {
+  if (process.env[name]) return process.env[name]!;
+  const envPath = resolve(__dirname, "../../.env.audit");
+  const line = readFileSync(envPath, "utf8")
+    .split("\n")
+    .find((l) => l.startsWith(name + "="));
+  if (!line) throw new Error(`${name} not found in .env.audit`);
+  return line.slice((name + "=").length).trim().replace(/^["']|["']$/g, "");
+}
+
+/** Base Supabase URL with any trailing slash trimmed. */
+export function supabaseUrl(): string {
+  return auditEnv("AUDIT_SUPABASE_URL").replace(/\/+$/, "");
+}
+
+export const PERSONA_LOGINS: Record<string, { email: string; password: string }> = {
+  A: { email: "ownera@example.test", password: "Test-Passw0rd!1" },
+  A1: { email: "staffa1@example.test", password: "Test-Passw0rd!2" },
+  A2: { email: "staffa2@example.test", password: "Test-Passw0rd!3" },
+  B: { email: "ownerb@example.test", password: "Test-Passw0rd!4" },
+  X: { email: "userx@example.test", password: "Test-Passw0rd!5" },
+};
+
 export type Persona = "anon" | "X" | "A" | "A1" | "A2" | "B";
 
 const SUBS: Record<Persona, string | null> = {
@@ -155,6 +179,7 @@ export async function fixtureIds() {
   const staffA = await sql`select id,name,role from public.staff where salon_id=${a.id} order by role`;
   const staffB = await sql`select id,name,role from public.staff where salon_id=${b.id} order by role`;
   const custB = await sql`select id,phone from public.customers where salon_id=${b.id} limit 1`;
+  const custA = await sql`select id from public.customers where salon_id=${a.id} and phone='+905551110000' limit 1`;
   return {
     salonA: a.id as string,
     salonB: b.id as string,
@@ -165,5 +190,6 @@ export async function fixtureIds() {
     ownerStaffB: (staffB.find((s) => s.role === "owner") ?? staffB[0]).id as string,
     customerB: custB[0]?.id as string,
     customerBPhone: custB[0]?.phone as string,
+    customerA: custA[0]?.id as string,
   };
 }
