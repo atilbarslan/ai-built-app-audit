@@ -93,3 +93,32 @@ begin
   end;
   return _id;
 end $$;
+
+-- =====================================================================
+-- SEC-03 : match the product rule "staff see their own calendar".
+--  * customers: staff may READ (needed to view history and add notes),
+--    but only the OWNER may insert/update/delete.
+--  * bookings: the OWNER sees all; a staff member sees only bookings
+--    assigned to their own staff row.
+-- Customer deletes are now owner-only (the FK cascade still removes that
+-- customer's bookings/notes). A soft-delete (active flag) would preserve
+-- history and is recommended as a follow-up; left out here to keep the
+-- change minimal and because it also needs UI/query changes.
+-- =====================================================================
+drop policy if exists "members manage customers" on public.customers;
+drop policy if exists "members read customers"   on public.customers;
+drop policy if exists "owner manages customers"  on public.customers;
+create policy "members read customers" on public.customers
+  for select to authenticated using (public.is_salon_member(salon_id));
+create policy "owner manages customers" on public.customers
+  for all to authenticated using (public.is_salon_owner(salon_id)) with check (public.is_salon_owner(salon_id));
+
+-- bookings: replace salon-wide staff read with own-only read; owner keeps full access
+drop policy if exists "members read bookings"   on public.bookings;
+drop policy if exists "staff reads own bookings" on public.bookings;
+create policy "staff reads own bookings" on public.bookings
+  for select to authenticated using (
+    exists (select 1 from public.staff st
+            where st.id = bookings.staff_id and st.user_id = auth.uid() and st.active)
+  );
+-- ("owner manages bookings" from 0000 still grants the owner all access incl. select)

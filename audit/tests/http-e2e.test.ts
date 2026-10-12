@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { sql, supabaseUrl, auditEnv, PERSONA_LOGINS, fixtureIds } from "./_db";
+import { sql, supabaseUrl, auditEnv, PERSONA_LOGINS, fixtureIds, validSlotUtc } from "./_db";
 
 const URL = supabaseUrl();
 const ANON = auditEnv("AUDIT_SUPABASE_PUBLISHABLE_KEY");
@@ -44,7 +44,7 @@ describe("E2E over HTTP (supabase-js)", () => {
     expect((pub as any).salon.name).toBe("Salon A");
     const svc = (pub as any).services[0];
     const staff = (pub as any).staff[0];
-    const starts = new Date(Date.now() + 40 * 864e5).toISOString();
+    const starts = validSlotUtc(10).toISOString();
     const { data: bid, error: bErr } = await c.rpc("create_public_booking", {
       _salon: (pub as any).salon.id, _service: svc.id, _staff: staff.id,
       _starts: starts, _name: "Walk In", _phone: "+905550009999", _email: "",
@@ -62,7 +62,7 @@ describe("E2E over HTTP (supabase-js)", () => {
     const staff = (pub as any).staff[0];
     const { data: bid, error } = await c.rpc("create_public_booking", {
       _salon: (pub as any).salon.id, _service: svc.id, _staff: staff.id,
-      _starts: new Date(Date.now() + 41 * 864e5).toISOString(),
+      _starts: validSlotUtc(11).toISOString(),
       _name: "HTTP HACKED", _phone: TEST_PHONE, _email: "http-attacker@evil.test",
     });
     expect(error).toBeNull();

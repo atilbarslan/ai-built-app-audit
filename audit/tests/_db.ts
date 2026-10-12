@@ -170,6 +170,19 @@ export function shortErr(e: any): string {
   return msg + code;
 }
 
+/**
+ * A valid bookable instant: `daysAhead` from now (within the 21-day window), at
+ * `hourIstanbul` in the salon's zone (Istanbul = UTC+3 -> subtract 3 for UTC), on
+ * an open day (skips Sunday), aligned to the minute. Keeps tests from tripping
+ * the server-side open-hours/window/alignment checks (BH-01).
+ */
+export function validSlotUtc(daysAhead: number, hourIstanbul = 11): Date {
+  const d = new Date(Date.now() + daysAhead * 864e5);
+  d.setUTCHours(hourIstanbul - 3, 0, 0, 0);
+  while (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1);
+  return d;
+}
+
 /** Fixture ids, loaded privileged (RLS bypassed as the superuser connection). */
 export async function fixtureIds() {
   const [a] = await sql`select id from public.salons where slug='salon-a'`;
