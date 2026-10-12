@@ -39,3 +39,5 @@ supabase/.temp/
 package-lock.json
 
 .env
+
+report/.chrome-profile/

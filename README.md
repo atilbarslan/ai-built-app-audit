@@ -16,7 +16,7 @@ At the time of the audit (October 2026), Lovable's Deep security scan reported *
 
 This audit found **2 High, 11 Medium, 5 Low and 1 informational** finding. None are the classic "RLS missing, everything open" problems - the foundations are solid (see "What was done well"). The recurring theme is subtler: **business rules are enforced in the browser UI but not in the database/server**, so a client that calls the API directly can do what the UI never offers.
 
-Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT.md). Access-control matrix: [`audit/role-matrix.md`](audit/role-matrix.md).
+Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT.md). Access-control matrix: [`audit/role-matrix.md`](audit/role-matrix.md). A client-facing summary (PDF) is at [`report/audit-report.pdf`](report/audit-report.pdf).
 
 | Finding | Severity | Status |
 |---|---|---|
@@ -48,7 +48,7 @@ Row-level security is enabled on all six tables and tenants are genuinely isolat
 
 ## Before and after
 
-- **`lovable-original`** branch - the app exactly as generated, untouched.
+- **`lovable-original`** branch - the app exactly as generated, untouched. The `.env` committed on this branch holds only a publishable key and points to a project that has since been deleted.
 - **`main`** branch - the audited app: one commit per finding, with schema changes in a new migration (`drizzle/migrations/0001_audit_hardening.sql`); the original `0000_migration.sql` is untouched.
 - Diff: **[`lovable-original` -> `main`](https://github.com/atilbarslan/ai-built-app-audit/compare/lovable-original...main)**
 
