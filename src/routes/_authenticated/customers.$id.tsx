@@ -39,7 +39,8 @@ function CustomerPage() {
   const histQ = useQuery({
     queryKey: ["customer-bookings", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("bookings").select("*, staff:staff(name)").eq("customer_id", id).order("starts_at", { ascending: false });
+      // FN-01: full history for every salon member (staff included); price only for the owner.
+      const { data, error } = await supabase.rpc("get_customer_history", { _customer: id });
       if (error) throw error;
       return data ?? [];
     },
@@ -173,7 +174,7 @@ function CustomerPage() {
             <div className="mt-3 space-y-2">
               {upcoming.map((b) => (
                 <div key={b.id} className="flex items-center justify-between rounded-lg bg-copper-soft p-3 text-sm">
-                  <span><span className="font-semibold">{fmtDateTime(b.starts_at)}</span> · {b.service_name} · {(b.staff as { name: string } | null)?.name}</span>
+                  <span><span className="font-semibold">{fmtDateTime(b.starts_at)}</span> · {b.service_name} · {b.staff_name}</span>
                   <Badge>Upcoming</Badge>
                 </div>
               ))}
@@ -183,8 +184,8 @@ function CustomerPage() {
             {past.length === 0 && <p className="text-sm text-muted-foreground">No past visits.</p>}
             {past.map((b) => (
               <div key={b.id} className="flex items-center justify-between py-2.5 text-sm">
-                <span><span className="font-medium">{fmtDateTime(b.starts_at)}</span> · {b.service_name} · <span className="text-muted-foreground">{(b.staff as { name: string } | null)?.name}</span>{b.booked_name && b.booked_name !== c.name && <span className="text-amber-600" title="Name entered at booking differs from this client; verify it is the same person"> booked as {b.booked_name}</span>}</span>
-                {b.status === "cancelled" ? <Badge variant="secondary">Cancelled</Badge> : <span className="text-muted-foreground">{money(b.price)}</span>}
+                <span><span className="font-medium">{fmtDateTime(b.starts_at)}</span> · {b.service_name} · <span className="text-muted-foreground">{b.staff_name}</span>{b.booked_name && b.booked_name !== c.name && <span className="text-amber-600" title="Name entered at booking differs from this client; verify it is the same person"> booked as {b.booked_name}</span>}</span>
+                {b.status === "cancelled" ? <Badge variant="secondary">Cancelled</Badge> : b.price != null && <span className="text-muted-foreground">{money(b.price)}</span>}
               </div>
             ))}
           </div>

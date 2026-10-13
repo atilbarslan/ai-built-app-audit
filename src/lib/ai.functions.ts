@@ -82,19 +82,17 @@ async function loadCustomer(supabase: any, customerId: string) {
     .eq("id", customerId)
     .maybeSingle();
   if (error || !customer) throw new Error("Customer not found");
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select("service_name, price, starts_at, status, staff:staff(name)")
-    .eq("customer_id", customerId)
-    .order("starts_at", { ascending: false })
-    .limit(30);
+  // FN-01: the client's whole history (all stylists), not only the caller's own
+  // bookings; members of the client's salon only. Newest first.
+  const { data: history } = await supabase.rpc("get_customer_history", { _customer: customerId });
+  const bookings = (history ?? []).slice(0, 30);
   const { data: notes } = await supabase
     .from("customer_notes")
     .select("body, author_name, created_at")
     .eq("customer_id", customerId)
     .order("created_at", { ascending: false })
     .limit(40);
-  return { customer, bookings: bookings ?? [], notes: notes ?? [] };
+  return { customer, bookings, notes: notes ?? [] };
 }
 
 const fmt = (d: string) =>
@@ -107,7 +105,7 @@ export const summarizeCustomer = createServerFn({ method: "POST" })
     const { customer, bookings, notes } = await loadCustomer(context.supabase, data.customerId);
     const now = Date.now();
     const history = bookings
-      .map((b: any) => `- ${fmt(b.starts_at)}: ${b.service_name} with ${b.staff?.name ?? "?"} (${b.status}${new Date(b.starts_at).getTime() > now ? ", upcoming" : ""})`)
+      .map((b: any) => `- ${fmt(b.starts_at)}: ${b.service_name} with ${b.staff_name ?? "?"} (${b.status}${new Date(b.starts_at).getTime() > now ? ", upcoming" : ""})`)
       .join("\n");
     const noteText = notes.map((n: any) => `- [${fmt(n.created_at)}${n.author_name ? `, ${n.author_name}` : ""}] ${n.body}`).join("\n");
     const summary = await generate(
@@ -135,7 +133,7 @@ export const writeReminder = createServerFn({ method: "POST" })
         DATA_GUARD,
       asUntrustedData(
         "client data",
-        `Salon: ${salon.name ?? ""}${salon.address ? `, ${salon.address}` : ""}${salon.phone ? `, phone ${salon.phone}` : ""}\nClient: ${customer.name}\nUpcoming: ${upcoming ? `${fmt(upcoming.starts_at)} - ${upcoming.service_name} with ${upcoming.staff?.name ?? ""}` : "none"}\nRecent notes: ${notes.slice(0, 5).map((n: any) => n.body).join(" | ") || "none"}`,
+        `Salon: ${salon.name ?? ""}${salon.address ? `, ${salon.address}` : ""}${salon.phone ? `, phone ${salon.phone}` : ""}\nClient: ${customer.name}\nUpcoming: ${upcoming ? `${fmt(upcoming.starts_at)} - ${upcoming.service_name} with ${upcoming.staff_name ?? ""}` : "none"}\nRecent notes: ${notes.slice(0, 5).map((n: any) => n.body).join(" | ") || "none"}`,
       ),
     );
     // SEC-09: the reminder is sent from the salon's own number - never let a link

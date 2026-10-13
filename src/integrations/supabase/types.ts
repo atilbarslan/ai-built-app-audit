@@ -321,6 +321,19 @@ export type Database = {
           starts_at: string
         }[]
       }
+      get_customer_history: {
+        Args: { _customer: string }
+        Returns: {
+          id: string
+          starts_at: string
+          ends_at: string
+          service_name: string
+          status: string
+          staff_name: string | null
+          booked_name: string | null
+          price: number | null
+        }[]
+      }
       get_public_salon: { Args: { _slug: string }; Returns: Json }
       is_salon_member: { Args: { _salon: string }; Returns: boolean }
       is_salon_owner: { Args: { _salon: string }; Returns: boolean }
