@@ -9,7 +9,9 @@
 // The table targets are Salon A's rows. Personas: anon, X (no salon),
 // A (owner A), A1/A2 (staff A), B (owner of the OTHER salon).
 //
-// The matrix is written to audit/role-matrix.md. Security-critical expectations
+// The matrix is rendered to audit/role-matrix.md ONLY when WRITE_ROLE_MATRIX=1 is
+// set, so a normal test run has no side effects on the committed document.
+// Security-critical expectations
 // are also asserted below; a FAILING assertion is a confirmed finding.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -109,6 +111,7 @@ beforeAll(async () => {
   let md = `# Role matrix - access to Salon A data (real calls against the test project)\n\n`;
   md += `Target rows belong to **Salon A**. Personas: anon (visitor), X (member of no salon, registered), A (owner A), A1/A2 (staff of A), B (owner of the OTHER salon).\n\n`;
   md += `Legend: \`✓N\` allowed (N rows affected/visible) · \`·0\` no error but 0 rows (filtered by RLS = effectively denied) · \`✗\` rejected.\n\n`;
+  md += `This reflects the state **after** the fixes (\`0001_audit_hardening.sql\` applied). It is produced by \`audit/tests/role-matrix.test.ts\`.\n\n`;
   for (const table of Object.keys(matrix)) {
     md += `### \`${table}\`\n\n`;
     md += `| Operation | ${PERSONAS.map((p) => PERSONA_LABEL[p]).join(" | ")} |\n`;
@@ -118,8 +121,8 @@ beforeAll(async () => {
     }
     md += `\n`;
   }
-  md += `\n_Note: \`select(A)\` for anon is DIRECT table access; public reads happen only through the \`get_public_salon\`/\`get_busy_times\` RPCs (separate tests)._\n`;
-  writeFileSync(resolve(__dirname, "../role-matrix.md"), md);
+  md += `_Note: \`select(A)\` for anon is DIRECT table access; public reads happen only through the \`get_public_salon\`/\`get_busy_times\` RPCs (separate tests). Staff (A1/A2) see \`·0\` for \`bookings\` because the seeded booking belongs to the owner and staff now see only their own._\n`;
+  if (process.env.WRITE_ROLE_MATRIX === "1") writeFileSync(resolve(__dirname, "../role-matrix.md"), md);
 });
 
 afterAll(async () => {

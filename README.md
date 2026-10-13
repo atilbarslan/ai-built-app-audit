@@ -85,6 +85,8 @@ npx vitest run --config audit/vitest.config.ts                            # evid
 npx tsc --noEmit                                                          # type check: expected to finish with no errors
 ```
 
+The test run does not modify any committed file: `audit/role-matrix.md` is regenerated only on request, with `WRITE_ROLE_MATRIX=1 npx vitest run --config audit/vitest.config.ts audit/tests/role-matrix.test.ts`.
+
 With only `0000` applied, the finding tests go **red** (they prove the finding); with `0001` and `0002` applied they go **green** (they prove the fix).
 
 **Latest test run:** 2026-10-13 - 55 tests: 50 passed, 1 skipped, 4 todo. The skipped test is a time-zone demonstration that is only meaningful when the machine's own zone differs from the salon's; it is skipped when they are the same, so it does not false-alarm. The 4 todo entries are the functional items left as recommendations (FN-03, FN-04, FN-05 and an SE-02 residual).
