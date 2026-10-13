@@ -55,7 +55,8 @@ Fixes were made test-first (a failing test that proves the finding, then the sma
 | Finding | Status |
 |---|---|
 | SEC-01 customer overwrite | Partially fixed (name/email no longer overwritten; phone-keyed linkage is residual, `booked_name` signal added) |
-| BH-01 unconstrained booking + SE-02 time zone | Fixed (salon time zone + server-side rules + slot builder) |
+| BH-01 unconstrained booking | Fixed (server-side rules evaluated in the salon's time zone) |
+| SE-02 time zone | Partially fixed (slot builder uses the salon's zone; residual: the public busy-time window and calendar days follow the device zone) |
 | SEC-02 input validation | Fixed |
 | SEC-03 staff permissions | Fixed |
 | SEC-04 invite consent | Fixed (explicit acceptance) |
@@ -196,7 +197,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 #### SE-02 - Time zone: slots computed in the visitor's browser zone · **Medium**
 - **Evidence:** `src/lib/format.ts` used `date.setHours(...)` (browser-local); `open_time`/`close_time` are stored as bare wall-clock with no zone. Test (`audit/tests/timezone.test.ts`): the same "09:00" resolved to 06:00Z (Istanbul), 07:00Z (Berlin = 10:00 local), 13:00Z (New York = 16:00 local).
 - **Impact:** a visitor outside the salon's zone saw shifted times and could book a slot that is not 09:00 at the salon; two visitors in different zones picking "09:00" sent two different instants.
-- **Fix / Status: Fixed** (with BH-01). `buildSlots` now takes a `timeZone` and computes slots in the salon's zone (`zonedWallTimeToUtc`); callers pass `salon.timezone`; `get_public_salon` returns it. Test green under three time zones. **Residual (functional review, not changed):** the public page still asks for busy times over the *visitor's* local day (`book.$slug.tsx:60-61`); for a visitor east of the salon (e.g. Tokyo) an evening booking falls outside that window and the slot is offered as free, then refused by the server ("that time was just taken"). No double booking is possible. Calendar and dashboard day/week boundaries also follow the device zone, and the AI helpers format times in a fixed `Europe/Istanbul` rather than `salons.timezone`. Recorded as a todo in `timezone.test.ts`.
+- **Fix / Status: Partially fixed** (with BH-01; re-rated from Fixed after the functional review found the residual below). `buildSlots` now takes a `timeZone` and computes slots in the salon's zone (`zonedWallTimeToUtc`); callers pass `salon.timezone`; `get_public_salon` returns it. Test green under three time zones. **Residual (functional review, not changed):** the public page still asks for busy times over the *visitor's* local day (`book.$slug.tsx:60-61`); for a visitor east of the salon (e.g. Tokyo) an evening booking falls outside that window and the slot is offered as free, then refused by the server ("that time was just taken"). No double booking is possible. Calendar and dashboard day/week boundaries also follow the device zone, and the AI helpers format times in a fixed `Europe/Istanbul` rather than `salons.timezone`. Recorded as a todo in `timezone.test.ts`.
 
 #### SE-03 - Scale: no pagination; default row cap; client-side revenue · **Medium**
 - **Evidence:** list queries in `src/hooks/use-bookings.ts` have no range/limit; the dashboard computes revenue client-side. Verified over HTTP: with 1100 bookings, the REST API returned only 1000 (`content-range: 0-999/1100`), so lists and the dashboard silently under-report past 1000 rows.

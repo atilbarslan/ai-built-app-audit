@@ -32,7 +32,7 @@ Full report with evidence and reproduction steps: [`audit/AUDIT.md`](audit/AUDIT
 | SEC-06 - session token in localStorage | Medium | Recommendation |
 | SEC-10 - personal data flows (no retention/erasure/notice) | Medium | Partially fixed (privacy notice only; retention/erasure/export outstanding) |
 | SE-01 - business rules only in the UI | Medium | Partially fixed (public rules server-side; revenue still client-side, see SE-03) |
-| SE-02 - booking slots computed in the visitor's time zone | Medium | Fixed (residual from the functional review: busy-time window and calendar days still follow the device zone; recommended) |
+| SE-02 - booking slots computed in the visitor's time zone | Medium | Partially fixed (slots use the salon's zone; residual from the functional review: busy-time window and calendar days still follow the device zone) |
 | SE-03 - no pagination; ~1000-row cap; client-side revenue | Medium | Recommendation |
 | SE-04 - data model (phone normalization, cascade, no audit trail) | Medium | Partially fixed |
 | FN-01 - staff saw only part of a client's history, so the AI briefing and reminder used partial data | Medium | Fixed |

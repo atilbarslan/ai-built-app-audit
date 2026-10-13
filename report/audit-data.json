@@ -168,7 +168,7 @@
       "whatRemains": "Revenue and popular-services totals are still added up in the browser rather than on the server; that is tracked separately as SE-03."
     },
     {
-      "id": "SE-02", "severity": "Medium", "status": "Fixed",
+      "id": "SE-02", "severity": "Medium", "status": "Partially fixed",
       "title": "Time slots used the visitor's time zone",
       "found": "The list of free time slots was calculated using the visitor's device time zone, while the salon's opening hours are stored without a time zone.",
       "impact": "A client in another region saw shifted times and could book a slot that is not actually open at the salon; two clients in different regions picking the same time sent two different real times.",
