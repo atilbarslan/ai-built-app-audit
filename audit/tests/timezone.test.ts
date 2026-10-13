@@ -40,3 +40,12 @@ describe("SE-02 - buildSlots time zone", () => {
     expect(firstIso).not.toBe("2027-06-15T06:00:00.000Z");
   });
 });
+
+describe("SE-02 residual (functional review) - public busy-time window", () => {
+  // Not changed in this round. src/routes/book.$slug.tsx asks get_busy_times for
+  // the visitor's local day (startOfDay/endOfDay in the browser zone). For a
+  // visitor east of the salon (e.g. Asia/Tokyo) an Istanbul booking at 18:00 falls
+  // outside that window, so the slot is offered as free; the server then rejects
+  // it ("that time was just taken"), so no double booking is possible.
+  it.todo("[SE-02 residual] the busy-time window should be the SALON's day, not the visitor's local day");
+});
