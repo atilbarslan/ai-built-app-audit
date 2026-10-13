@@ -185,7 +185,7 @@
     <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/3c08384">3c08384</a></p>
     <h3>How we verified it</h3>
     <p>Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after.</p>
-    <h3>What remains</h3><p>Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended.</p>
+    <h3>What remains</h3><p>Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended. This change also limited the client history staff saw on the client page and in the AI buttons; the functional review caught that and it was fixed as FN-01.</p>
     <div class="fnum">Finding 4 of 24</div>
   </section>
   <section class="page finding">
@@ -370,7 +370,7 @@
     </div>
     <h2>Staff saw only part of a client's history</h2>
     <h3>What was found</h3>
-    <p>After staff were limited to their own calendar, the client page and both AI buttons read the same limited data. A stylist opening a client saw "Visits 0" and no past visits, even when the client had visits with colleagues.</p>
+    <p>This problem was caused by one of this audit's own security fixes, not by the original app, and the functional review caught it. After staff were limited to their own calendar (SEC-03), the client page and both AI buttons read the same limited data. A stylist opening a client saw "Visits 0" and no past visits, even when the client had visits with colleagues.</p>
     <h3>Why it matters for the business</h3>
     <p>A stylist preparing for an appointment saw an empty history; the AI briefing summarised only their own visits; the AI reminder could tell a client they had no upcoming appointment and invite them to book again, although they already had one with a colleague.</p>
     

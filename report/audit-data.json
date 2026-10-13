@@ -101,7 +101,7 @@
       "files": ["drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["3c08384"],
       "howVerified": "Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after.",
-      "whatRemains": "Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended."
+      "whatRemains": "Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended. This change also limited the client history staff saw on the client page and in the AI buttons; the functional review caught that and it was fixed as FN-01."
     },
     {
       "id": "SEC-04", "severity": "Medium", "status": "Fixed",
@@ -202,7 +202,7 @@
     {
       "id": "FN-01", "severity": "Medium", "status": "Fixed",
       "title": "Staff saw only part of a client's history",
-      "found": "After staff were limited to their own calendar, the client page and both AI buttons read the same limited data. A stylist opening a client saw \"Visits 0\" and no past visits, even when the client had visits with colleagues.",
+      "found": "This problem was caused by one of this audit's own security fixes, not by the original app, and the functional review caught it. After staff were limited to their own calendar (SEC-03), the client page and both AI buttons read the same limited data. A stylist opening a client saw \"Visits 0\" and no past visits, even when the client had visits with colleagues.",
       "impact": "A stylist preparing for an appointment saw an empty history; the AI briefing summarised only their own visits; the AI reminder could tell a client they had no upcoming appointment and invite them to book again, although they already had one with a colleague.",
       "whatChanged": "We added a controlled way to read one client's full history for anyone who works at that client's salon, with prices shown only to the owner. The client page and both AI buttons now use it. Staff still see only their own appointments in the calendar.",
       "files": ["drizzle/migrations/0002_functional_fixes.sql", "src/routes/_authenticated/customers.$id.tsx", "src/lib/ai.functions.ts"],
