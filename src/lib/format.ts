@@ -107,3 +107,26 @@ export function isOpenDay(date: Date, openDays: number[]) {
   const d = date.getDay() === 0 ? 7 : date.getDay();
   return openDays.includes(d);
 }
+
+/**
+ * Hours drawn on the calendar's time grid: the opening hours, widened to include
+ * any appointment that starts before opening or ends after closing (FN-02), so an
+ * appointment is never drawn outside the grid where it cannot be seen. Hours are
+ * in the viewer's zone, like the rest of the calendar view.
+ */
+export function calendarHourRange(
+  open: string,
+  close: string,
+  bookings: { starts_at: string | Date; ends_at: string | Date }[],
+): { start: number; end: number } {
+  let start = Number(open.slice(0, 2));
+  let end = Math.ceil(Number(close.slice(0, 2)) + Number(close.slice(3, 5)) / 60);
+  for (const b of bookings) {
+    const s = new Date(b.starts_at);
+    const e = new Date(b.ends_at);
+    start = Math.min(start, s.getHours());
+    const sameDay = e.toDateString() === s.toDateString();
+    end = Math.max(end, sameDay ? Math.ceil(e.getHours() + e.getMinutes() / 60) : 24);
+  }
+  return { start, end };
+}

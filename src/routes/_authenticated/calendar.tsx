@@ -4,7 +4,7 @@ import { addDays, endOfDay, format, isSameDay, startOfDay, startOfWeek } from "d
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalon } from "@/hooks/use-me";
 import { useBookings, useStaffList, type BookingRow } from "@/hooks/use-bookings";
-import { fmtTime } from "@/lib/format";
+import { calendarHourRange, fmtTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -28,8 +28,8 @@ function CalendarPage() {
   const staffId = staffSel === "all" ? undefined : staffSel;
   const { data = [] } = useBookings({ salonId: me.salon.id, from, to, staffId });
 
-  const openH = Number(me.salon.open_time.slice(0, 2));
-  const closeH = Math.ceil(Number(me.salon.close_time.slice(0, 2)) + Number(me.salon.close_time.slice(3, 5)) / 60);
+  // FN-02: widen the grid so appointments outside the opening hours stay visible.
+  const { start: openH, end: closeH } = calendarHourRange(me.salon.open_time, me.salon.close_time, data);
   const hours = Array.from({ length: closeH - openH }, (_, i) => openH + i);
   const days = view === "day" ? [date] : Array.from({ length: 7 }, (_, i) => addDays(from, i));
   const shift = (n: number) => setDate(addDays(date, view === "day" ? n : n * 7));
