@@ -47,7 +47,9 @@ function tzOffsetMs(utcMs: number, timeZone: string): number {
     if (x.type !== "literal") a[x.type] = x.value;
     return a;
   }, {});
-  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +(p.hour === "24" ? "0" : p.hour), +p.minute, +p.second);
+  const n = (k: string) => Number(p[k] ?? "0");
+  const hour = n("hour") === 24 ? 0 : n("hour");
+  const asUTC = Date.UTC(n("year"), n("month") - 1, n("day"), hour, n("minute"), n("second"));
   return asUTC - utcMs;
 }
 

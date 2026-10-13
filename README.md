@@ -82,6 +82,7 @@ psql "$AUDIT_DATABASE_URL" -f drizzle/migrations/0001_audit_hardening.sql  # aft
 psql "$AUDIT_DATABASE_URL" -f drizzle/migrations/0002_functional_fixes.sql # after: functional fixes
 psql "$AUDIT_DATABASE_URL" -f audit/tests/00_fixtures.sql                  # fictitious test data
 npx vitest run --config audit/vitest.config.ts                            # evidence + defense tests
+npx tsc --noEmit                                                          # type check: expected to finish with no errors
 ```
 
 With only `0000` applied, the finding tests go **red** (they prove the finding); with `0001` and `0002` applied they go **green** (they prove the fix).
