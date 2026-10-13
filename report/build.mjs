@@ -47,6 +47,20 @@ const rubricSection =
   </section>`
     : "";
 
+const requirementsSection =
+  d.requirements && d.requirements.rows && d.requirements.rows.length
+    ? `
+  <section class="page">
+    <h2>Does the app do what was asked?</h2>
+    <p>${esc(d.requirements.intro)}</p>
+    <table>
+      <tr><th>What was asked</th><th>Result</th><th>Related findings</th></tr>
+      ${d.requirements.rows.map((r) => `<tr><td>${esc(r.sentence)}</td><td>${esc(r.result)}</td><td>${esc(r.findings)}</td></tr>`).join("")}
+    </table>
+    <p class="muted">${esc(d.requirements.summary)}</p>
+  </section>`
+    : "";
+
 const designBlock =
   d.designDecisions && d.designDecisions.length
     ? `
@@ -170,6 +184,7 @@ const html = `<!doctype html>
     <ul>${d.executiveSummary.topRisks.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
     <p class="muted">${esc(d.executiveSummary.testRun)}</p>
   </section>
+  ${requirementsSection}
   ${rubricSection}
 
   <section class="page">

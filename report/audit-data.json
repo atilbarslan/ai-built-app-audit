@@ -11,18 +11,19 @@
     "accentColor": "#9a5b3a"
   },
   "executiveSummary": {
-    "intro": "This report reviews a salon and barbershop booking app for security and correctness, and documents the fixes applied. It is written for the business owner: each finding explains what was found, why it matters for the business, and what was done about it.",
+    "intro": "This report reviews a salon and barbershop booking app in two parts: whether every feature works the way it was asked for (functional review), and whether it is secure. It documents the fixes applied and is written for the business owner: each finding explains what was found, why it matters for the business, and what was done about it.",
     "foundationNote": "The app is built on solid foundations. The database keeps each salon's data separate, visitors cannot read the tables directly, and the system already prevents two bookings landing on the same person at the same time. The automated security scan offered by the build platform reported no issues at the time of the audit (October 2026); that same report notes it cannot catch every possible risk.",
     "theme": "The issues found are subtler than missing basics: the booking and permission rules were enforced only in the app's screens, not on the server. Anyone who talks to the system directly, bypassing the screens, could do things the screens never allow. That is the thread running through the most serious findings.",
-    "counts": { "Critical": 0, "High": 2, "Medium": 11, "Low": 5, "Informational": 1 },
-    "outcome": "Of 19 findings, the 2 High and most Medium issues are fixed or materially reduced; the rest are documented with clear recommendations. Every fix is backed by an automated test that failed before the change and passes after it. The original app is preserved unchanged for before-and-after comparison.",
-    "testRun": "Latest test run (2026-10-12): 42 tests, 41 passed, 1 skipped (an environment-dependent time-zone demonstration).",
+    "counts": { "Critical": 0, "High": 2, "Medium": 13, "Low": 8, "Informational": 1 },
+    "outcome": "Of 24 findings (19 from the security review, 5 from the functional review), the 2 High and most Medium issues are fixed or materially reduced; the rest are documented with clear recommendations. Every fix is backed by an automated test that failed before the change and passes after it. Of the 19 requirements in the original request, 15 are now met, 4 partly and none missed. The original app is preserved unchanged for before-and-after comparison.",
+    "testRun": "Latest test run (2026-10-13): 55 tests: 50 passed, 1 skipped (an environment-dependent time-zone demonstration), 4 recorded as to-do (functional items left as recommendations).",
     "topRisks": [
       "A stranger who knew a client's phone number could change that client's name and email.",
       "A single visitor could flood the booking calendar and client list with fake entries and make it unusable.",
       "Any staff member could delete a client and that client's entire history.",
       "Bookings could be created at closed times (03:00, closed days, or years ahead) by bypassing the app.",
-      "Typing someone's email into the staff list could silently give them access to your client data."
+      "Typing someone's email into the staff list could silently give them access to your client data.",
+      "Stylists could miss appointments: the calendar hid appointments outside opening hours, and a stylist saw only part of a client's history, so the AI briefing and reminder were built from partial data."
     ]
   },
   "severityRubric": [
@@ -35,6 +36,20 @@
   "designDecisions": [
     "Owners and staff can place, move or cancel appointments outside published opening hours and on closed days. This is a deliberate product choice for this app: salons routinely take off-hours or day-off appointments, so booking management inside the app keeps full control of the calendar. The public booking page that clients use is still held to the opening-hours, open-day and 21-day advance rules (see BH-01), and the system still prevents two appointments from overlapping on any path."
   ],
+  "requirements": {
+    "intro": "Each sentence of the original request was checked against the app, by automated tests or by step-by-step manual checks on a local copy. Long sentences were split into their parts, giving 19 requirements.",
+    "rows": [
+      { "sentence": "Build me a booking app for hair salons and barbershops.", "result": "Met", "findings": "-" },
+      { "sentence": "Any salon owner should be able to sign up, create their salon, add their staff and their services with prices and durations.", "result": "Mostly met", "findings": "FN-05 (services and staff cannot be edited)" },
+      { "sentence": "Each salon gets its own public booking page where customers pick a service, a staff member and a free time slot, and book with their name, phone number and email.", "result": "Met", "findings": "SEC-01 and SE-02 (residuals)" },
+      { "sentence": "Staff log in and see their own calendar for the day and week.", "result": "Met after fix", "findings": "FN-02 (fixed)" },
+      { "sentence": "The owner sees all bookings, can cancel or move them, and has a dashboard with revenue per week and the most popular services.", "result": "Partly met", "findings": "FN-03, FN-04, SE-03" },
+      { "sentence": "Owners and staff can keep notes on each customer (preferences, past services, anything useful).", "result": "Met", "findings": "SE-05 (notes cannot be edited)" },
+      { "sentence": "Add an AI button on the customer page that summarises the customer's history and notes before their appointment, and an AI button that writes a friendly reminder message we can send by WhatsApp or SMS.", "result": "Met after fix", "findings": "FN-01 (fixed)" },
+      { "sentence": "Make it modern, clean and mobile friendly.", "result": "Met", "findings": "Checked at phone width (375 px) on every main screen" }
+    ],
+    "summary": "19 requirements: 15 met, 4 partly met, 0 missed (before the two functional fixes: 12 met, 7 partly met)."
+  },
   "strengths": [
     "Each salon's data is isolated from every other salon's (verified by tests).",
     "Anonymous visitors cannot read database tables directly; public actions go only through a small set of controlled functions.",
@@ -160,7 +175,8 @@
       "whatChanged": "We compute the available time slots in the salon's time zone instead of the visitor's, and pass the salon's time zone through to the booking page.",
       "files": ["src/lib/format.ts", "src/routes/book.$slug.tsx", "drizzle/migrations/0001_audit_hardening.sql"],
       "commits": ["28d4163"],
-      "howVerified": "Test in timezone.test.ts passes in three different time zones (it produced shifted times before the change)."
+      "howVerified": "Test in timezone.test.ts passes in three different time zones (it produced shifted times before the change).",
+      "whatRemains": "Found in the functional review: the public page still asks for busy times over the visitor's own day, so for a visitor far east of the salon an evening slot can show as free and is then refused by the server (no double booking is possible). Calendar days and AI message times also follow the device or a fixed zone rather than the salon's. Recommended (roadmap)."
     },
     {
       "id": "SE-03", "severity": "Medium", "status": "Recommendation",
@@ -182,6 +198,26 @@
       "commits": ["a5937aa"],
       "howVerified": "Test '[Item 12]' in public-booking.test.ts confirms two formats of the same number map to one client.",
       "whatRemains": "Switch deletes to soft-delete (hide rather than erase) and add an audit trail of who changed what and when."
+    },
+    {
+      "id": "FN-01", "severity": "Medium", "status": "Fixed",
+      "title": "Staff saw only part of a client's history",
+      "found": "After staff were limited to their own calendar, the client page and both AI buttons read the same limited data. A stylist opening a client saw \"Visits 0\" and no past visits, even when the client had visits with colleagues.",
+      "impact": "A stylist preparing for an appointment saw an empty history; the AI briefing summarised only their own visits; the AI reminder could tell a client they had no upcoming appointment and invite them to book again, although they already had one with a colleague.",
+      "whatChanged": "We added a controlled way to read one client's full history for anyone who works at that client's salon, with prices shown only to the owner. The client page and both AI buttons now use it. Staff still see only their own appointments in the calendar.",
+      "files": ["drizzle/migrations/0002_functional_fixes.sql", "src/routes/_authenticated/customers.$id.tsx", "src/lib/ai.functions.ts"],
+      "commits": ["84bc1c8"],
+      "howVerified": "Tests '[FN-01]' in functional.test.ts failed before the change and pass after it (staff see every visit without prices; the owner sees prices; another salon, an outsider and anonymous visitors get nothing). Checked in the running app: the stylist now sees all four appointments."
+    },
+    {
+      "id": "FN-02", "severity": "Medium", "status": "Fixed",
+      "title": "The calendar hid appointments outside opening hours",
+      "found": "The day calendar drew only the current opening hours. An appointment before opening or after closing, for example after the owner shortened the hours, was drawn outside the visible grid.",
+      "impact": "A stylist looking at the day calendar could miss an appointment entirely.",
+      "whatChanged": "The calendar grid now widens to include any appointment outside the opening hours.",
+      "files": ["src/lib/format.ts", "src/routes/_authenticated/calendar.tsx"],
+      "commits": ["873e5f6"],
+      "howVerified": "Tests '[FN-02]' in functional.test.ts failed before the change and pass after it. Checked in the running app: a 09:00 appointment with opening hours from 10:00 is now visible."
     },
     {
       "id": "SEC-07", "severity": "Low", "status": "Fixed",
@@ -236,6 +272,35 @@
       ]
     },
     {
+      "id": "FN-03", "severity": "Low", "status": "Recommendation",
+      "title": "Dashboard figures include appointments that have not happened",
+      "found": "\"Revenue this week\" adds every booked appointment of the week, including ones still to come, and there is no \"completed\" or \"no-show\" status. \"Most popular services, last 8 weeks\" also counts the next two weeks.",
+      "impact": "Booked value can be mistaken for earned revenue, and the ranking mixes in future bookings.",
+      "howToFix": [
+        "Count only appointments that have taken place, or label the figure as booked revenue.",
+        "Limit the popular-services ranking to past appointments.",
+        "Add a completed / no-show status so revenue reflects what actually happened."
+      ]
+    },
+    {
+      "id": "FN-04", "severity": "Low", "status": "Recommendation",
+      "title": "The Bookings list does not reach every booking",
+      "found": "The Bookings screen shows only 60 days back and 90 days ahead; anything outside that window appears only in the calendar.",
+      "impact": "The owner cannot find older or far-ahead bookings in the list.",
+      "howToFix": [
+        "Add paging or a date picker to the Bookings list (together with the server-side paging in SE-03)."
+      ]
+    },
+    {
+      "id": "FN-05", "severity": "Low", "status": "Recommendation",
+      "title": "Services and staff cannot be edited",
+      "found": "Settings can add, switch off or delete a service, and add or switch off a staff member, but cannot change a price, a duration, a name or an email.",
+      "impact": "Raising a price means deleting the service and adding it again (past bookings keep their price, so history is safe).",
+      "howToFix": [
+        "Add an edit form for services (name, price, duration) and staff (name, email)."
+      ]
+    },
+    {
       "id": "SEC-08", "severity": "Informational", "status": "Fixed",
       "title": "Internal helper functions callable by anyone",
       "found": "Two internal helper functions could be called by anonymous visitors (harmless: they return nothing useful to an anonymous caller).",
@@ -259,7 +324,9 @@
     { "priority": "6", "item": "Confirm production auth settings and enable password-guessing protection", "addresses": "SEC-12", "effort": "Low" },
     { "priority": "7", "item": "Keep environment files out of the repository; update development tools", "addresses": "SEC-11", "effort": "Low" },
     { "priority": "8", "item": "Broaden automated tests; tighten types; soft-delete and audit trail", "addresses": "SE-04, SE-05", "effort": "Medium" },
-    { "priority": "9", "item": "Tighten the content security policy to a nonce-based one that no longer allows inline scripts", "addresses": "SEC-05", "effort": "Low" }
+    { "priority": "9", "item": "Tighten the content security policy to a nonce-based one that no longer allows inline scripts", "addresses": "SEC-05", "effort": "Low" },
+    { "priority": "10", "item": "Dashboard counts only appointments that took place; paging on the Bookings list; edit forms for services and staff", "addresses": "FN-03, FN-04, FN-05", "effort": "Medium" },
+    { "priority": "11", "item": "Use the salon's time zone for busy times, calendar days and AI messages", "addresses": "SE-02 (residual)", "effort": "Low" }
   ],
   "scope": "Testing was limited to a locally running copy of the app and a separate test project with the same database structure applied to it. No hosted or production environment was accessed. All test data is fictitious.",
   "reproduce": {
@@ -275,8 +342,9 @@
       "npm install",
       "Apply the original database structure (migration 0000).",
       "Apply the hardening changes (migration 0001).",
+      "Apply the functional fixes (migration 0002).",
       "Load the fictitious test data (fixtures).",
-      "Run the test suite. With only the original structure applied, the finding tests fail (proving the issue); with the hardening applied, they pass (proving the fix)."
+      "Run the test suite. With only the original structure applied, the finding tests fail (proving the issue); with migrations 0001 and 0002 applied, they pass (proving the fix)."
     ]
   }
 }

@@ -62,14 +62,24 @@
 
   <section class="page">
     <h2>Executive summary</h2>
-    <p>This report reviews a salon and barbershop booking app for security and correctness, and documents the fixes applied. It is written for the business owner: each finding explains what was found, why it matters for the business, and what was done about it.</p>
-    <div class="counts"><div class="count"><div class="cn" style="color:#7a1020">0</div><div class="cl">Critical</div></div><div class="count"><div class="cn" style="color:#b23b2e">2</div><div class="cl">High</div></div><div class="count"><div class="cn" style="color:#b7791f">11</div><div class="cl">Medium</div></div><div class="count"><div class="cn" style="color:#4a6b8a">5</div><div class="cl">Low</div></div><div class="count"><div class="cn" style="color:#5a6b5a">1</div><div class="cl">Informational</div></div></div>
+    <p>This report reviews a salon and barbershop booking app in two parts: whether every feature works the way it was asked for (functional review), and whether it is secure. It documents the fixes applied and is written for the business owner: each finding explains what was found, why it matters for the business, and what was done about it.</p>
+    <div class="counts"><div class="count"><div class="cn" style="color:#7a1020">0</div><div class="cl">Critical</div></div><div class="count"><div class="cn" style="color:#b23b2e">2</div><div class="cl">High</div></div><div class="count"><div class="cn" style="color:#b7791f">13</div><div class="cl">Medium</div></div><div class="count"><div class="cn" style="color:#4a6b8a">8</div><div class="cl">Low</div></div><div class="count"><div class="cn" style="color:#5a6b5a">1</div><div class="cl">Informational</div></div></div>
     <p>The app is built on solid foundations. The database keeps each salon's data separate, visitors cannot read the tables directly, and the system already prevents two bookings landing on the same person at the same time. The automated security scan offered by the build platform reported no issues at the time of the audit (October 2026); that same report notes it cannot catch every possible risk.</p>
     <p>The issues found are subtler than missing basics: the booking and permission rules were enforced only in the app's screens, not on the server. Anyone who talks to the system directly, bypassing the screens, could do things the screens never allow. That is the thread running through the most serious findings.</p>
-    <div class="callout">Of 19 findings, the 2 High and most Medium issues are fixed or materially reduced; the rest are documented with clear recommendations. Every fix is backed by an automated test that failed before the change and passes after it. The original app is preserved unchanged for before-and-after comparison.</div>
+    <div class="callout">Of 24 findings (19 from the security review, 5 from the functional review), the 2 High and most Medium issues are fixed or materially reduced; the rest are documented with clear recommendations. Every fix is backed by an automated test that failed before the change and passes after it. Of the 19 requirements in the original request, 15 are now met, 4 partly and none missed. The original app is preserved unchanged for before-and-after comparison.</div>
     <h3>The biggest risks in plain terms</h3>
-    <ul><li>A stranger who knew a client's phone number could change that client's name and email.</li><li>A single visitor could flood the booking calendar and client list with fake entries and make it unusable.</li><li>Any staff member could delete a client and that client's entire history.</li><li>Bookings could be created at closed times (03:00, closed days, or years ahead) by bypassing the app.</li><li>Typing someone's email into the staff list could silently give them access to your client data.</li></ul>
-    <p class="muted">Latest test run (2026-10-12): 42 tests, 41 passed, 1 skipped (an environment-dependent time-zone demonstration).</p>
+    <ul><li>A stranger who knew a client's phone number could change that client's name and email.</li><li>A single visitor could flood the booking calendar and client list with fake entries and make it unusable.</li><li>Any staff member could delete a client and that client's entire history.</li><li>Bookings could be created at closed times (03:00, closed days, or years ahead) by bypassing the app.</li><li>Typing someone's email into the staff list could silently give them access to your client data.</li><li>Stylists could miss appointments: the calendar hid appointments outside opening hours, and a stylist saw only part of a client's history, so the AI briefing and reminder were built from partial data.</li></ul>
+    <p class="muted">Latest test run (2026-10-13): 55 tests: 50 passed, 1 skipped (an environment-dependent time-zone demonstration), 4 recorded as to-do (functional items left as recommendations).</p>
+  </section>
+  
+  <section class="page">
+    <h2>Does the app do what was asked?</h2>
+    <p>Each sentence of the original request was checked against the app, by automated tests or by step-by-step manual checks on a local copy. Long sentences were split into their parts, giving 19 requirements.</p>
+    <table>
+      <tr><th>What was asked</th><th>Result</th><th>Related findings</th></tr>
+      <tr><td>Build me a booking app for hair salons and barbershops.</td><td>Met</td><td>-</td></tr><tr><td>Any salon owner should be able to sign up, create their salon, add their staff and their services with prices and durations.</td><td>Mostly met</td><td>FN-05 (services and staff cannot be edited)</td></tr><tr><td>Each salon gets its own public booking page where customers pick a service, a staff member and a free time slot, and book with their name, phone number and email.</td><td>Met</td><td>SEC-01 and SE-02 (residuals)</td></tr><tr><td>Staff log in and see their own calendar for the day and week.</td><td>Met after fix</td><td>FN-02 (fixed)</td></tr><tr><td>The owner sees all bookings, can cancel or move them, and has a dashboard with revenue per week and the most popular services.</td><td>Partly met</td><td>FN-03, FN-04, SE-03</td></tr><tr><td>Owners and staff can keep notes on each customer (preferences, past services, anything useful).</td><td>Met</td><td>SE-05 (notes cannot be edited)</td></tr><tr><td>Add an AI button on the customer page that summarises the customer's history and notes before their appointment, and an AI button that writes a friendly reminder message we can send by WhatsApp or SMS.</td><td>Met after fix</td><td>FN-01 (fixed)</td></tr><tr><td>Make it modern, clean and mobile friendly.</td><td>Met</td><td>Checked at phone width (375 px) on every main screen</td></tr>
+    </table>
+    <p class="muted">19 requirements: 15 met, 4 partly met, 0 missed (before the two functional fixes: 12 met, 7 partly met).</p>
   </section>
   
   <section class="page">
@@ -113,7 +123,7 @@
     <h3>How we verified it</h3>
     <p>Test '[#1]' in public-booking.test.ts and http-e2e.test.ts failed on the original app (the client's name was overwritten) and passes after the change (the stored name is unchanged).</p>
     <h3>What remains</h3><p>A stranger who knows a client's phone number can still attach a booking to that client's record without changing it. Closing this fully needs a one-time code sent to the phone at booking time.</p>
-    <div class="fnum">Finding 1 of 19</div>
+    <div class="fnum">Finding 1 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -134,7 +144,7 @@
     <h3>How we verified it</h3>
     <p>Two tests in public-booking.test.ts (the per-phone cap and the per-salon burst) accepted the flood before and stop it after.</p>
     <h3>What remains</h3><p>Per-visitor rate limiting and a CAPTCHA need a layer in front of the app (the booking call comes straight from the browser), and the AI features still need a per-user usage limit.</p>
-    <div class="fnum">Finding 2 of 19</div>
+    <div class="fnum">Finding 2 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -155,7 +165,7 @@
     <h3>How we verified it</h3>
     <p>Tests '[#2] 03:00', '[#2] years in the future', '[#2] closed day' and '[BH-01] 15-minute grid' in public-booking.test.ts were accepted on the original app and are rejected after the change.</p>
     
-    <div class="fnum">Finding 3 of 19</div>
+    <div class="fnum">Finding 3 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -176,7 +186,7 @@
     <h3>How we verified it</h3>
     <p>Tests in role-matrix.test.ts and http-e2e.test.ts show staff can no longer edit or delete clients, and a test in pentest.test.ts shows a staff member sees only their own bookings. All failed before and pass after.</p>
     <h3>What remains</h3><p>Staff can still read the salon's whole client list (names, phone, email, notes), because they need it to keep notes; only their booking view is limited to their own. Restricting the client list per staff member would be a separate product decision. Owners can also still delete a client (which removes that client's history); a soft-delete that hides instead of erasing is recommended.</p>
-    <div class="fnum">Finding 4 of 19</div>
+    <div class="fnum">Finding 4 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -197,7 +207,7 @@
     <h3>How we verified it</h3>
     <p>Tests in pentest.test.ts confirm sign-in no longer auto-joins, a different email cannot accept the invite, and the invited person can accept their own.</p>
     
-    <div class="fnum">Finding 5 of 19</div>
+    <div class="fnum">Finding 5 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -218,7 +228,7 @@
     <h3>How we verified it</h3>
     <p>Test '[#2/SEC-02] name length' in public-booking.test.ts accepted a 20,000-character name before and rejects it after.</p>
     
-    <div class="fnum">Finding 6 of 19</div>
+    <div class="fnum">Finding 6 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -239,7 +249,7 @@
     <h3>How we verified it</h3>
     <p>Test in security-headers.test.ts checks the headers are present, and a live check confirmed the booking and sign-in pages load with no policy violations.</p>
     <h3>What remains</h3><p>The policy still permits inline scripts (it has to, because the app's framework injects them as the page loads), which weakens its protection against injected scripts. Tightening it to a stricter, nonce-based policy is a recommended follow-up (see the roadmap).</p>
-    <div class="fnum">Finding 7 of 19</div>
+    <div class="fnum">Finding 7 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -253,7 +263,7 @@
     <p>If a script-injection flaw ever occurred, an attacker could read the session and take over the account.</p>
     
     <h3>How to fix</h3><ol><li>Store the login session in a secure, HttpOnly cookie so page scripts cannot read it.</li><li>Keep the content security policy added in SEC-05 in place as an added layer.</li></ol>
-    <div class="fnum">Finding 8 of 19</div>
+    <div class="fnum">Finding 8 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -274,7 +284,7 @@
     <h3>How we verified it</h3>
     <p>Confirmed on the booking page.</p>
     <h3>What remains</h3><p>Define a retention period with automatic deletion, add a way to export or erase a client's data on request, and reduce how much client data is sent to the AI.</p>
-    <div class="fnum">Finding 9 of 19</div>
+    <div class="fnum">Finding 9 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -295,7 +305,7 @@
     <h3>How we verified it</h3>
     <p>Covered by the BH-01 and SEC-03 tests, which exercise the public rules on the server.</p>
     <h3>What remains</h3><p>Revenue and popular-services totals are still added up in the browser rather than on the server; that is tracked separately as SE-03.</p>
-    <div class="fnum">Finding 10 of 19</div>
+    <div class="fnum">Finding 10 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -315,8 +325,8 @@
     <p class="where">Files: <code>src/lib/format.ts</code>, <code>src/routes/book.$slug.tsx</code>, <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/28d4163">28d4163</a></p>
     <h3>How we verified it</h3>
     <p>Test in timezone.test.ts passes in three different time zones (it produced shifted times before the change).</p>
-    
-    <div class="fnum">Finding 11 of 19</div>
+    <h3>What remains</h3><p>Found in the functional review: the public page still asks for busy times over the visitor's own day, so for a visitor far east of the salon an evening slot can show as free and is then refused by the server (no double booking is possible). Calendar days and AI message times also follow the device or a fixed zone rather than the salon's. Recommended (roadmap).</p>
+    <div class="fnum">Finding 11 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -330,7 +340,7 @@
     <p>As the salon grows, the dashboard and lists will quietly show incomplete or wrong totals.</p>
     
     <h3>How to fix</h3><ol><li>Calculate revenue and popular services on the server rather than in the browser.</li><li>Add paging to the client and booking lists so nothing is cut off at 1000 rows.</li></ol>
-    <div class="fnum">Finding 12 of 19</div>
+    <div class="fnum">Finding 12 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -351,7 +361,49 @@
     <h3>How we verified it</h3>
     <p>Test '[Item 12]' in public-booking.test.ts confirms two formats of the same number map to one client.</p>
     <h3>What remains</h3><p>Switch deletes to soft-delete (hide rather than erase) and add an audit trail of who changed what and when.</p>
-    <div class="fnum">Finding 13 of 19</div>
+    <div class="fnum">Finding 13 of 24</div>
+  </section>
+  <section class="page finding">
+    <div class="fhead">
+      <div class="fid">FN-01 <span class="badge" style="background:#b7791f">Medium</span></div>
+      <div class="fstatus ok">Fixed</div>
+    </div>
+    <h2>Staff saw only part of a client's history</h2>
+    <h3>What was found</h3>
+    <p>After staff were limited to their own calendar, the client page and both AI buttons read the same limited data. A stylist opening a client saw "Visits 0" and no past visits, even when the client had visits with colleagues.</p>
+    <h3>Why it matters for the business</h3>
+    <p>A stylist preparing for an appointment saw an empty history; the AI briefing summarised only their own visits; the AI reminder could tell a client they had no upcoming appointment and invite them to book again, although they already had one with a colleague.</p>
+    
+    
+    <h3>What we changed</h3>
+    <p>We added a controlled way to read one client's full history for anyone who works at that client's salon, with prices shown only to the owner. The client page and both AI buttons now use it. Staff still see only their own appointments in the calendar.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>drizzle/migrations/0002_functional_fixes.sql</code>, <code>src/routes/_authenticated/customers.$id.tsx</code>, <code>src/lib/ai.functions.ts</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/84bc1c8">84bc1c8</a></p>
+    <h3>How we verified it</h3>
+    <p>Tests '[FN-01]' in functional.test.ts failed before the change and pass after it (staff see every visit without prices; the owner sees prices; another salon, an outsider and anonymous visitors get nothing). Checked in the running app: the stylist now sees all four appointments.</p>
+    
+    <div class="fnum">Finding 14 of 24</div>
+  </section>
+  <section class="page finding">
+    <div class="fhead">
+      <div class="fid">FN-02 <span class="badge" style="background:#b7791f">Medium</span></div>
+      <div class="fstatus ok">Fixed</div>
+    </div>
+    <h2>The calendar hid appointments outside opening hours</h2>
+    <h3>What was found</h3>
+    <p>The day calendar drew only the current opening hours. An appointment before opening or after closing, for example after the owner shortened the hours, was drawn outside the visible grid.</p>
+    <h3>Why it matters for the business</h3>
+    <p>A stylist looking at the day calendar could miss an appointment entirely.</p>
+    
+    
+    <h3>What we changed</h3>
+    <p>The calendar grid now widens to include any appointment outside the opening hours.</p>
+    <h3>Where</h3>
+    <p class="where">Files: <code>src/lib/format.ts</code>, <code>src/routes/_authenticated/calendar.tsx</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/873e5f6">873e5f6</a></p>
+    <h3>How we verified it</h3>
+    <p>Tests '[FN-02]' in functional.test.ts failed before the change and pass after it. Checked in the running app: a 09:00 appointment with opening hours from 10:00 is now visible.</p>
+    
+    <div class="fnum">Finding 15 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -372,7 +424,7 @@
     <h3>How we verified it</h3>
     <p>Tests in pentest.test.ts confirm a malformed link is normalised and a negative price is rejected.</p>
     
-    <div class="fnum">Finding 14 of 19</div>
+    <div class="fnum">Finding 16 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -393,7 +445,7 @@
     <h3>How we verified it</h3>
     <p>Test in ai-sanitize.test.ts removes a link smuggled into a simulated AI reply and keeps normal text. No live exploit was attempted against the production model, which is not reachable in this test setup.</p>
     <h3>What remains</h3><p>The hard control here is stripping links from the outgoing message. Wrapping the notes as data reduces, but cannot fully guarantee against, an AI model being steered; this is why the status is 'Mitigated' rather than 'Fixed'. Keep untrusted text out of the instruction part of the prompt as the AI model changes.</p>
-    <div class="fnum">Finding 15 of 19</div>
+    <div class="fnum">Finding 17 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -407,7 +459,7 @@
     <p>Low: the committed key is public by design, and the advisories affect only the development tools, not the live app.</p>
     
     <h3>How to fix</h3><ol><li>Remove environment files from the repository and load secrets from the environment instead.</li><li>Update the development tool flagged by the dependency check.</li></ol>
-    <div class="fnum">Finding 16 of 19</div>
+    <div class="fnum">Finding 18 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -421,7 +473,7 @@
     <p>Without a limit, automated password-guessing against an account is easier.</p>
     
     <h3>How to fix</h3><ol><li>Confirm the production password and sign-in settings.</li><li>Enable a limit or a temporary lockout after repeated failed sign-in attempts.</li></ol>
-    <div class="fnum">Finding 17 of 19</div>
+    <div class="fnum">Finding 19 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -435,7 +487,49 @@
     <p>Lower confidence that future changes will not quietly break something.</p>
     
     <h3>How to fix</h3><ol><li>Add automated tests that cover the main booking and account flows.</li><li>Replace loosely-typed code with explicit types.</li><li>Use the security test suite added by this audit as a starting point.</li></ol>
-    <div class="fnum">Finding 18 of 19</div>
+    <div class="fnum">Finding 20 of 24</div>
+  </section>
+  <section class="page finding">
+    <div class="fhead">
+      <div class="fid">FN-03 <span class="badge" style="background:#4a6b8a">Low</span></div>
+      <div class="fstatus rec">Recommendation</div>
+    </div>
+    <h2>Dashboard figures include appointments that have not happened</h2>
+    <h3>What was found</h3>
+    <p>"Revenue this week" adds every booked appointment of the week, including ones still to come, and there is no "completed" or "no-show" status. "Most popular services, last 8 weeks" also counts the next two weeks.</p>
+    <h3>Why it matters for the business</h3>
+    <p>Booked value can be mistaken for earned revenue, and the ranking mixes in future bookings.</p>
+    
+    <h3>How to fix</h3><ol><li>Count only appointments that have taken place, or label the figure as booked revenue.</li><li>Limit the popular-services ranking to past appointments.</li><li>Add a completed / no-show status so revenue reflects what actually happened.</li></ol>
+    <div class="fnum">Finding 21 of 24</div>
+  </section>
+  <section class="page finding">
+    <div class="fhead">
+      <div class="fid">FN-04 <span class="badge" style="background:#4a6b8a">Low</span></div>
+      <div class="fstatus rec">Recommendation</div>
+    </div>
+    <h2>The Bookings list does not reach every booking</h2>
+    <h3>What was found</h3>
+    <p>The Bookings screen shows only 60 days back and 90 days ahead; anything outside that window appears only in the calendar.</p>
+    <h3>Why it matters for the business</h3>
+    <p>The owner cannot find older or far-ahead bookings in the list.</p>
+    
+    <h3>How to fix</h3><ol><li>Add paging or a date picker to the Bookings list (together with the server-side paging in SE-03).</li></ol>
+    <div class="fnum">Finding 22 of 24</div>
+  </section>
+  <section class="page finding">
+    <div class="fhead">
+      <div class="fid">FN-05 <span class="badge" style="background:#4a6b8a">Low</span></div>
+      <div class="fstatus rec">Recommendation</div>
+    </div>
+    <h2>Services and staff cannot be edited</h2>
+    <h3>What was found</h3>
+    <p>Settings can add, switch off or delete a service, and add or switch off a staff member, but cannot change a price, a duration, a name or an email.</p>
+    <h3>Why it matters for the business</h3>
+    <p>Raising a price means deleting the service and adding it again (past bookings keep their price, so history is safe).</p>
+    
+    <h3>How to fix</h3><ol><li>Add an edit form for services (name, price, duration) and staff (name, email).</li></ol>
+    <div class="fnum">Finding 23 of 24</div>
   </section>
   <section class="page finding">
     <div class="fhead">
@@ -456,7 +550,7 @@
     <h3>How we verified it</h3>
     <p>Test in pentest.test.ts confirms an anonymous caller can no longer run the helper.</p>
     
-    <div class="fnum">Finding 19 of 19</div>
+    <div class="fnum">Finding 24 of 24</div>
   </section>
 
   <section class="page">
@@ -464,7 +558,7 @@
     <p>Recommended order for the work still outstanding.</p>
     <table>
       <tr><th>#</th><th>Action</th><th>Addresses</th><th>Effort</th></tr>
-      <tr><td>1</td><td>Phone verification (one-time code) at booking</td><td>SEC-01</td><td>Medium</td></tr><tr><td>2</td><td>Move the login session to a secure, script-inaccessible cookie</td><td>SEC-06</td><td>Medium</td></tr><tr><td>3</td><td>Server-side totals and paging for lists and the dashboard</td><td>SE-03</td><td>Medium</td></tr><tr><td>4</td><td>Data retention, deletion and export; minimise data sent to the AI</td><td>SEC-10</td><td>Medium</td></tr><tr><td>5</td><td>Per-visitor rate limiting and a CAPTCHA at the edge; AI usage limit</td><td>BH-02</td><td>Low</td></tr><tr><td>6</td><td>Confirm production auth settings and enable password-guessing protection</td><td>SEC-12</td><td>Low</td></tr><tr><td>7</td><td>Keep environment files out of the repository; update development tools</td><td>SEC-11</td><td>Low</td></tr><tr><td>8</td><td>Broaden automated tests; tighten types; soft-delete and audit trail</td><td>SE-04, SE-05</td><td>Medium</td></tr><tr><td>9</td><td>Tighten the content security policy to a nonce-based one that no longer allows inline scripts</td><td>SEC-05</td><td>Low</td></tr>
+      <tr><td>1</td><td>Phone verification (one-time code) at booking</td><td>SEC-01</td><td>Medium</td></tr><tr><td>2</td><td>Move the login session to a secure, script-inaccessible cookie</td><td>SEC-06</td><td>Medium</td></tr><tr><td>3</td><td>Server-side totals and paging for lists and the dashboard</td><td>SE-03</td><td>Medium</td></tr><tr><td>4</td><td>Data retention, deletion and export; minimise data sent to the AI</td><td>SEC-10</td><td>Medium</td></tr><tr><td>5</td><td>Per-visitor rate limiting and a CAPTCHA at the edge; AI usage limit</td><td>BH-02</td><td>Low</td></tr><tr><td>6</td><td>Confirm production auth settings and enable password-guessing protection</td><td>SEC-12</td><td>Low</td></tr><tr><td>7</td><td>Keep environment files out of the repository; update development tools</td><td>SEC-11</td><td>Low</td></tr><tr><td>8</td><td>Broaden automated tests; tighten types; soft-delete and audit trail</td><td>SE-04, SE-05</td><td>Medium</td></tr><tr><td>9</td><td>Tighten the content security policy to a nonce-based one that no longer allows inline scripts</td><td>SEC-05</td><td>Low</td></tr><tr><td>10</td><td>Dashboard counts only appointments that took place; paging on the Bookings list; edit forms for services and staff</td><td>FN-03, FN-04, FN-05</td><td>Medium</td></tr><tr><td>11</td><td>Use the salon's time zone for busy times, calendar days and AI messages</td><td>SE-02 (residual)</td><td>Low</td></tr>
     </table>
   </section>
 
@@ -475,7 +569,7 @@
     <h3>Re-running the tests</h3>
     <p>The findings are backed by an automated test suite. To re-run it against your own test project, provide connection details in a local environment file (not included in this report) with these variable names:</p>
     <ul><li><code>AUDIT_SUPABASE_URL</code></li><li><code>AUDIT_SUPABASE_PUBLISHABLE_KEY</code></li><li><code>AUDIT_SUPABASE_SECRET_KEY</code></li><li><code>AUDIT_DATABASE_URL</code></li><li><code>AUDIT_GEMINI_API_KEY (only for the AI prompt-injection test)</code></li></ul>
-    <ol><li>npm install</li><li>Apply the original database structure (migration 0000).</li><li>Apply the hardening changes (migration 0001).</li><li>Load the fictitious test data (fixtures).</li><li>Run the test suite. With only the original structure applied, the finding tests fail (proving the issue); with the hardening applied, they pass (proving the fix).</li></ol>
+    <ol><li>npm install</li><li>Apply the original database structure (migration 0000).</li><li>Apply the hardening changes (migration 0001).</li><li>Apply the functional fixes (migration 0002).</li><li>Load the fictitious test data (fixtures).</li><li>Run the test suite. With only the original structure applied, the finding tests fail (proving the issue); with migrations 0001 and 0002 applied, they pass (proving the fix).</li></ol>
   </section>
 
 </body></html>

@@ -4,7 +4,7 @@
 
 **Scope:** only a locally running copy of the app and **a separate test Supabase project** (the same database migration applied to it). No requests were made to any hosted or production environment. All test data is fictitious (`example.test`).
 
-**What this document contains:** the findings, the evidence for each (file:line and a runnable test), the impact in plain language, the fix applied (or why it was left as a recommendation), and how to reproduce everything. Finding ids, severities, evidence and test names match the test suite in [`tests/`](tests).
+**What this document contains:** two parts, a security review (sections 1-4) and a functional review that checks every sentence of the prompt against the app (section 5). For both: the findings, the evidence for each (file:line and a runnable test), the impact in plain language, the fix applied (or why it was left as a recommendation), and how to reproduce everything. Finding ids, severities, evidence and test names match the test suite in [`tests/`](tests).
 
 ---
 
@@ -20,8 +20,8 @@ The findings sit at a finer level: **business rules are enforced only in the bro
 |---|---|---|
 | **Critical** | 0 | - |
 | **High** | 2 | SEC-01, BH-02 |
-| **Medium** | 11 | BH-01, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-10, SE-01, SE-02, SE-03, SE-04 |
-| **Low** | 5 | SEC-07, SEC-09, SEC-11, SEC-12, SE-05 |
+| **Medium** | 13 | BH-01, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-10, SE-01, SE-02, SE-03, SE-04, FN-01, FN-02 |
+| **Low** | 8 | SEC-07, SEC-09, SEC-11, SEC-12, SE-05, FN-03, FN-04, FN-05 |
 | **Informational** | 1 | SEC-08 |
 
 ### Severity rubric
@@ -36,7 +36,9 @@ Findings are rated on one scale, by who could exploit the issue and what it affe
 | **Low** | Limited or hard-to-reach impact, or a best-practice / hygiene / maintainability gap. |
 | **Informational** | No practical security impact; recorded for completeness. |
 
-**Re-rating note (2026-10-12):** against this rubric, **BH-02** (unbounded flooding of the booking calendar - denial of a core function by an anonymous caller) was raised from Medium to **High**, and **BH-01** (out-of-policy public bookings - recoverable integrity, no data exposure) was lowered from High to **Medium**. The High/Medium/Low/Info totals are unchanged (2 / 11 / 5 / 1).
+**Re-rating note (2026-10-12):** against this rubric, **BH-02** (unbounded flooding of the booking calendar - denial of a core function by an anonymous caller) was raised from Medium to **High**, and **BH-01** (out-of-policy public bookings - recoverable integrity, no data exposure) was lowered from High to **Medium**. The High/Medium/Low/Info totals were unchanged by that re-rating (2 / 11 / 5 / 1 at the time).
+
+**Functional review (2026-10-13):** adds FN-01..FN-05 (2 Medium, 3 Low), so the totals are now 2 High / 13 Medium / 8 Low / 1 Informational (24 findings). See [section 5](#5-functional-review-requirements-traceability).
 
 ### Top 5 (one line each)
 
@@ -48,7 +50,7 @@ Findings are rated on one scale, by who could exploit the issue and what it affe
 
 ### Fix outcome
 
-Fixes were made test-first (a failing test that proves the finding, then the smallest change, then a passing test), each fix in its own commit (a few closely related findings share one). Schema changes live in a new migration, `drizzle/migrations/0001_audit_hardening.sql`; the original migration `0000_migration.sql` is untouched so the before/after comparison is preserved.
+Fixes were made test-first (a failing test that proves the finding, then the smallest change, then a passing test), each fix in its own commit (a few closely related findings share one). Schema changes live in new migrations, `drizzle/migrations/0001_audit_hardening.sql` (security) and `0002_functional_fixes.sql` (functional review); the original migration `0000_migration.sql` is untouched so the before/after comparison is preserved.
 
 | Finding | Status |
 |---|---|
@@ -65,9 +67,11 @@ Fixes were made test-first (a failing test that proves the finding, then the sma
 | SEC-10 privacy | Partially fixed (booking-page notice; retention/erasure recommended) |
 | Hardening: anon table grants | Fixed |
 | Hardening: phone normalization | Fixed |
-| SEC-06, SEC-11, SE-03, SE-05 | Left as recommendations (reasons below) |
+| FN-01 partial client history for staff (AI briefing/reminder) | Fixed (`0002_functional_fixes.sql`) |
+| FN-02 calendar hid out-of-hours appointments | Fixed |
+| SEC-06, SEC-11, SE-03, SE-05, FN-03, FN-04, FN-05 | Left as recommendations (reasons below) |
 
-Test suite after fixes: **42 tests, 41 pass, 1 skipped** (the skipped one is a time-zone demonstration that is meaningless when the machine is already on Europe/Istanbul). `npm run build` passes.
+Test suite after fixes (2026-10-13): **55 tests: 50 pass, 1 skipped, 4 todo**. The skipped one is a time-zone demonstration that is meaningless when the machine is already on Europe/Istanbul; the 4 todo entries are the unfixed functional items (FN-03, FN-04, FN-05 and the SE-02 residual), kept as tests that state the expected behaviour. `npm run build` passes.
 
 ### Design decisions
 
@@ -83,6 +87,7 @@ Some behaviour is deliberate and is **not** treated as a finding:
 - Access-control and RPC behaviour were tested both **directly against Postgres** and over **HTTP (supabase-js)**. The direct-Postgres method reproduces RLS faithfully by doing exactly what the API layer does per request: `set local role <anon|authenticated>` plus `request.jwt.claims` (and `auth.uid()` reads that claim). This is authoritative for RLS; the HTTP tests produced the same results.
 - Not available in this local setup (and therefore not exercised): Google OAuth sign-in and the hosted AI gateway. The auth settings of the test project may differ from a production project; GoTrue values reported under SEC-12 are those of the test project.
 - Test users were created directly in the database (email pre-confirmed, no email sent); all data is fictitious (`example.test`).
+- For the functional review the app ran locally (`vite dev`) against the test project through a git-ignored local env file (variable names as in `.env.example`); screens were checked at desktop width and at 375 px. No AI key was set, so the AI helpers were exercised up to the model call (error path), never against a model.
 - The prompt-injection surface (SEC-09) was assessed from code plus an equivalent call to a separate model (Gemini) used purely as a test tool, since the app's hosted gateway is not reachable locally.
 
 ### Reproduce
@@ -93,11 +98,12 @@ Connection values live in a local `.env.audit` file (not committed; see `.env.ex
 npm install
 psql "$AUDIT_DATABASE_URL" -f drizzle/migrations/0000_migration.sql       # before: the generated schema
 psql "$AUDIT_DATABASE_URL" -f drizzle/migrations/0001_audit_hardening.sql  # after: the fixes
+psql "$AUDIT_DATABASE_URL" -f drizzle/migrations/0002_functional_fixes.sql # after: functional fixes
 psql "$AUDIT_DATABASE_URL" -f audit/tests/00_fixtures.sql                  # fictitious test data
 npx vitest run --config audit/vitest.config.ts                            # evidence + defense tests
 ```
 
-Run with only `0000` applied and the finding tests go **red** (they prove the finding); with `0001` applied they go **green** (they prove the fix).
+Run with only `0000` applied and the finding tests go **red** (they prove the finding); with `0001` and `0002` applied they go **green** (they prove the fix).
 
 ---
 
@@ -190,7 +196,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 #### SE-02 - Time zone: slots computed in the visitor's browser zone · **Medium**
 - **Evidence:** `src/lib/format.ts` used `date.setHours(...)` (browser-local); `open_time`/`close_time` are stored as bare wall-clock with no zone. Test (`audit/tests/timezone.test.ts`): the same "09:00" resolved to 06:00Z (Istanbul), 07:00Z (Berlin = 10:00 local), 13:00Z (New York = 16:00 local).
 - **Impact:** a visitor outside the salon's zone saw shifted times and could book a slot that is not 09:00 at the salon; two visitors in different zones picking "09:00" sent two different instants.
-- **Fix / Status: Fixed** (with BH-01). `buildSlots` now takes a `timeZone` and computes slots in the salon's zone (`zonedWallTimeToUtc`); callers pass `salon.timezone`; `get_public_salon` returns it. Test green under three time zones.
+- **Fix / Status: Fixed** (with BH-01). `buildSlots` now takes a `timeZone` and computes slots in the salon's zone (`zonedWallTimeToUtc`); callers pass `salon.timezone`; `get_public_salon` returns it. Test green under three time zones. **Residual (functional review, not changed):** the public page still asks for busy times over the *visitor's* local day (`book.$slug.tsx:60-61`); for a visitor east of the salon (e.g. Tokyo) an evening booking falls outside that window and the slot is offered as free, then refused by the server ("that time was just taken"). No double booking is possible. Calendar and dashboard day/week boundaries also follow the device zone, and the AI helpers format times in a fixed `Europe/Istanbul` rather than `salons.timezone`. Recorded as a todo in `timezone.test.ts`.
 
 #### SE-03 - Scale: no pagination; default row cap; client-side revenue · **Medium**
 - **Evidence:** list queries in `src/hooks/use-bookings.ts` have no range/limit; the dashboard computes revenue client-side. Verified over HTTP: with 1100 bookings, the REST API returned only 1000 (`content-range: 0-999/1100`), so lists and the dashboard silently under-report past 1000 rows.
@@ -206,7 +212,62 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 
 ---
 
-## 5. What was done well (with evidence)
+## 5. Functional review (requirements traceability)
+
+The security review asks "what can someone do that they should not?". This part asks the opposite question: **does every sentence of the prompt work the way it was asked for?** The prompt (README, "The prompt it was built from") has 8 sentences; compound sentences are split into their clauses, giving **19 requirements**. Each was traced to the code and checked either by an automated test or by a written manual step against the app running locally on the test project (`vite dev`, connected through a git-ignored local env file; screens also checked at 375 px width).
+
+**Result after this round:** 15 meet the requirement, 4 partially, 0 do not. Before the two fixes below: 12 / 7 / 0. Five functional findings (FN-01..FN-05): 2 Medium (fixed), 3 Low (recommendations). Topics already covered by the earlier findings are referenced, not re-raised.
+
+| Id | Requirement (prompt, verbatim) | Where | How tested | Result | Finding |
+|---|---|---|---|---|---|
+| R-01 | "Build me a booking app for hair salons and barbershops." | whole app | All rows below | Meets | - |
+| R-02a | "Any salon owner should be able to sign up," | `src/routes/auth.tsx:48-56` | Code review; sign-in with test users (manual, `http-e2e.test.ts`). Email sign-up was not run end to end because it sends a confirmation email; Google sign-in is not available locally | Meets | - |
+| R-02b | "create their salon," | `src/components/app-shell.tsx` (Onboarding), `create_salon` | `pentest.test.ts` "DEFENSE: create_salon always makes the caller the owner"; fixtures create both salons through it | Meets | - |
+| R-02c | "add their staff" | `src/routes/_authenticated/settings.tsx:97-110`, `accept_staff_invite` | Fixtures (owner adds A1/A2); `pentest.test.ts` "[SEC-04] explicit accept_staff_invite links the user" | Meets | Deactivating a stylist leaves their upcoming bookings in place: see SE-04 |
+| R-02d | "and their services with prices and durations." | `settings.tsx:50-66` | Fixtures; `pentest.test.ts` negative price / positive duration. Manual: Settings has add, on/off and delete, but no edit | Partially | FN-05 |
+| R-03a | "Each salon gets its own public booking page" | `src/routes/book.$slug.tsx`, `get_public_salon` | `http-e2e.test.ts` "DEFENSE: anonymous can load the public salon and place a booking"; manual `/book/salon-a` | Meets | - |
+| R-03b | "where customers pick a service, a staff member and a free time slot," | `book.$slug.tsx:50-75`, `src/lib/format.ts` (`buildSlots`), `get_busy_times` | `functional.test.ts` "DEFENSE: a booked slot disappears from that stylist's free slots ..." and "DEFENSE: a cancelled appointment frees the slot ..."; `public-booking.test.ts` (hours, days, window, grid) | Meets | SE-02 residual: for a visitor east of the salon (e.g. Tokyo) the busy-time window is the visitor's day, so an evening slot can show as free; the server then refuses it, no double booking (`timezone.test.ts`, todo) |
+| R-03c | "and book with their name, phone number and email." | `book.$slug.tsx:76-97`, `create_public_booking` | `http-e2e.test.ts` happy path; `public-booking.test.ts` validation tests | Meets | Identity by phone: see SEC-01 (residual) and SE-04 |
+| R-04a | "Staff log in" | `auth.tsx`, `src/hooks/use-me.ts` | Manual: signed in as A1 on the local app; personas sign in over HTTP in `http-e2e.test.ts` | Meets | - |
+| R-04b | "and see their own calendar for the day and week." | `src/routes/_authenticated/calendar.tsx:23-32`; policy "staff reads own bookings" (`0001`) | `pentest.test.ts` "[#3] staff must see only their OWN bookings"; `functional.test.ts` [FN-02]; manual: day and week views as A1 (desktop and 375 px) | Meets (was Partially) | FN-02 (fixed). Day boundaries follow the device zone: SE-02 residual |
+| R-05a | "The owner sees all bookings," | `src/routes/_authenticated/bookings.tsx:29-30`, `calendar.tsx` (All staff) | Code review; manual: Bookings list and calendar as owner A | Partially | FN-04; row cap: SE-03 |
+| R-05b | "can cancel" | `bookings.tsx:48-53` | `functional.test.ts` "DEFENSE: a cancelled appointment frees the slot ..."; manual Cancel dialog | Meets | - |
+| R-05c | "or move them," | `bookings.tsx:115-141` | `functional.test.ts` "DEFENSE: moving onto an occupied slot is rejected, with an error the Bookings screen recognises"; manual Move dialog at 375 px | Meets | - |
+| R-05d | "and has a dashboard with revenue per week" | `src/routes/_authenticated/dashboard.tsx:19-35`, `src/hooks/use-bookings.ts:32` | Code review: cancelled bookings are excluded (good), the price is the one stored on the booking (good), the week starts Monday in the device zone. Manual: with three appointments still to come this week the dashboard showed "Revenue this week TRY 1,500" | Partially | FN-03; client-side totals and row cap: SE-03 |
+| R-05e | "and the most popular services." | `dashboard.tsx:37-46` | Code review: cancelled bookings excluded; grouped by the service name stored on each booking, so a deleted service still counts; ties keep the order of first appearance (no tie-break) | Partially | FN-03 |
+| R-06 | "Owners and staff can keep notes on each customer (preferences, past services, anything useful)." | `src/routes/_authenticated/customers.$id.tsx:67-78`, notes policies | `role-matrix.test.ts` / [`role-matrix.md`](role-matrix.md): owner and staff add and read; author or owner deletes. Notes cannot be edited | Meets | Editing: see SE-05 |
+| R-07a | "Add an AI button on the customer page that summarises the customer's history and notes before their appointment," | `customers.$id.tsx:80-100`, `src/lib/ai.functions.ts` | `functional.test.ts` [FN-01]; manual: the error path shows a plain toast ("AI is not configured for this app.") with no key set; with no history/notes the prompt sends "none" and tells the model to say data is thin (`ai.functions.ts:112-116`). The model itself was not called | Meets (was Partially) | FN-01 (fixed) |
+| R-07b | "and an AI button that writes a friendly reminder message we can send by WhatsApp or SMS." | `ai.functions.ts`, `customers.$id.tsx:142-143` | `functional.test.ts` [FN-01]; `ai-sanitize.test.ts`; code review of the `wa.me` / `sms:` links (normalized phone, see SE-04). Nothing was sent | Meets (was Partially) | FN-01 (fixed) |
+| R-08 | "Make it modern, clean and mobile friendly." | all screens | Manual at 375 x 812: public booking (all steps), sign-in, dashboard, calendar day and week, bookings + Move dialog, clients, client page, settings. No horizontal page scroll on any of them; the week view switches to a list on phones. Minor: on the Bookings list the stylist and price are cut off at 375 px | Meets | - |
+
+### FN-01 - Staff saw only part of a client's history, so the AI briefing and reminder were built from partial data · **Medium** (wrong information to staff and to the client, recoverable, needs a signed-in staff account)
+- **Evidence:** after SEC-03, the `bookings` policy lets a stylist read only bookings assigned to them (`0001_audit_hardening.sql:143-147`). The client page (`customers.$id.tsx`, history query) and both AI helpers (`ai.functions.ts`, `loadCustomer`) read that same table. Manual (local app, signed in as A1): for a client with a past visit and an upcoming one with A2, an upcoming one with the owner and one with A1, the page showed **"Visits 0"** and **"No past visits"**. Test: `audit/tests/functional.test.ts` [FN-01] (failed before the fix: the history function did not exist).
+- **Impact:** a stylist preparing for an appointment saw an empty history; the AI briefing summarised only their own visits; the AI reminder could say "no upcoming appointment" and invite the client to book again although the client already had one with a colleague.
+- **Fix / Status: Fixed** (`drizzle/migrations/0002_functional_fixes.sql`, `customers.$id.tsx`, `ai.functions.ts`, commit `84bc1c8`). New `get_customer_history(_customer)` returns one client's whole history to members of that client's salon only; prices only to the owner; not callable by anonymous visitors. The `bookings` policies are unchanged, so the calendar is still "own only". Tests green; manual: A1 now sees "Visits 1" and all four appointments, without prices.
+
+### FN-02 - The calendar grid hid appointments outside the current opening hours · **Medium** (a stylist can miss an appointment; recoverable, needs a signed-in account)
+- **Evidence:** `calendar.tsx` drew hours from `open_time` to `close_time` only and placed each appointment at `(hour - openH) * HOUR`. Manual (local app): with an A1 appointment at 09:00 and opening hours changed to 10:00, the day view showed nothing at 09:00; the card was drawn above the grid and clipped. The phone week view (a list) did show it. Test: `functional.test.ts` [FN-02] (failed before the fix).
+- **Impact:** after an owner shortens the opening hours, or for an off-hours appointment (allowed on purpose, see [Design decisions](#design-decisions)), a stylist looking at the day calendar does not see the appointment.
+- **Fix / Status: Fixed** (`src/lib/format.ts` `calendarHourRange`, `calendar.tsx`, commit `873e5f6`). The grid widens to cover the displayed appointments. Tests green; manual: the 09:00 appointment is visible and the grid starts at 09:00.
+
+### FN-03 - Dashboard figures include appointments that have not happened · **Low** (misleading figures, no data change)
+- **Evidence:** `dashboard.tsx:21-22` loads from 7 weeks back to 2 weeks ahead. "Revenue this week" adds every booked appointment of the current week, including ones still to come, and there is no "completed" or "no-show" status. "Most popular services · last 8 weeks" (`:39`) also counts the next two weeks. Manual: on a Tuesday with three upcoming appointments that week, "Revenue this week" showed TRY 1,500 although nothing had taken place.
+- **Impact:** the owner may read booked value as earned revenue, and a "last 8 weeks" ranking that includes future bookings.
+- **Fix / Status: Recommendation** (`it.todo` in `functional.test.ts`). Label the figure "booked" or count only past appointments; limit "popular" to past appointments; add a completed/no-show status (a product decision). Server-side totals: SE-03.
+
+### FN-04 - The Bookings list reaches only 60 days back and 90 days ahead · **Low** (the calendar still shows the rest)
+- **Evidence:** `bookings.tsx:29-30`. A booking moved further ahead, or an older one, is not in the list; the calendar shows it.
+- **Impact:** "the owner sees all bookings" holds only within that window on the Bookings screen.
+- **Fix / Status: Recommendation** (`it.todo`). Paging or a date picker on the list, together with SE-03.
+
+### FN-05 - Services and staff cannot be edited · **Low** (workaround exists)
+- **Evidence:** `settings.tsx:57-61` updates only `active` for services; staff only `active` (`:105-110`). No way to change a price, a duration, a name or an email.
+- **Impact:** to raise a price the owner must delete the service and add it again (past bookings keep their stored name and price, so history is safe).
+- **Fix / Status: Recommendation** (`it.todo`). An edit form for services and staff.
+
+---
+
+## 6. What was done well (with evidence)
 
 Confirmed by the passing ("green") tests or by code review:
 
@@ -230,7 +291,7 @@ Lovable's own scan reported no issues and states that *"The scanner can't catch 
 
 ---
 
-## 6. Remaining recommendations (not changed in this round)
+## 7. Remaining recommendations (not changed in this round)
 
 - **SEC-01:** phone verification (OTP) at booking time (overwrite is already blocked; residual linkage remains).
 - **BH-02:** per-IP rate limiting + CAPTCHA (edge layer) and a per-user/salon AI quota.
@@ -240,5 +301,10 @@ Lovable's own scan reported no issues and states that *"The scanner can't catch 
 - **SE-03:** pagination + server-side aggregation (the ~1000-row cap is real).
 - **SE-05:** broaden test coverage; replace `any` with typed query results.
 - **SEC-05:** a stricter nonce-based CSP (the current policy allows `script-src 'unsafe-inline'`).
+
+- **FN-03:** dashboard figures: count only appointments that took place (or label them "booked"); add a completed/no-show status.
+- **FN-04:** paging or a date picker on the Bookings list (with SE-03).
+- **FN-05:** edit form for services (price, duration) and staff (name, email).
+- **SE-02 residual:** compute the public busy-time window, the calendar day and the AI time format in `salons.timezone`.
 
 Suggested next priority: SEC-01 OTP -> SEC-06 cookie session -> SE-03 pagination/server aggregation -> retention/erasure (SEC-10).
