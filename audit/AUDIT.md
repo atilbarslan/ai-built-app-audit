@@ -138,6 +138,7 @@ Each: **Severity** (rationale) · **Evidence** (file:line + test) · **Impact** 
 - **Evidence:** `audit/tests/public-booking.test.ts` - a single anonymous caller created 60/60 bookings unthrottled. No per-user AI limit either (`src/lib/ai.functions.ts`).
 - **Impact:** An attacker could fill the calendar and customer table with fake records and make the salon unusable.
 - **Fix / Status: Partially fixed** (`0001`, BH-02). `create_public_booking` now enforces at most 5 upcoming bookings per phone and at most 10 bookings per salon per minute. Tests green. **Recommended (not done):** per-IP rate limiting and CAPTCHA (cannot live in the RPC because it is called directly from the browser; needs an edge layer) and a per-user/salon AI quota.
+- **Residual risk of the fix itself:** the per-salon quota (10 bookings per minute) is shared by all visitors, so someone who keeps sending bookings can use it up and block real customers while the attack lasts; it limits fake records, not availability. Likewise, the per-phone limit (5 upcoming bookings) lets someone who knows a customer's phone number fill that customer's quota, because phone numbers are not verified (SEC-01). Both are why the recommended edge-layer controls (per-IP rate limiting, CAPTCHA) and OTP phone verification matter.
 
 #### SEC-02 - No length/format validation on public bookings · **Medium**
 - **Evidence:** `0000_migration.sql:156` set only a minimum length; no maximum and no email/phone format. Test: a 20,000-character name was accepted.
@@ -295,7 +296,7 @@ Lovable's own scan reported no issues and states that *"The scanner can't catch 
 ## 7. Remaining recommendations (not changed in this round)
 
 - **SEC-01:** phone verification (OTP) at booking time (overwrite is already blocked; residual linkage remains).
-- **BH-02:** per-IP rate limiting + CAPTCHA (edge layer) and a per-user/salon AI quota.
+- **BH-02:** per-IP rate limiting + CAPTCHA (edge layer) and a per-user/salon AI quota (also closes the quota-exhaustion risk above).
 - **SEC-06:** HttpOnly cookie session instead of localStorage.
 - **SEC-10 / data model:** minimize data sent to the model, retention/auto-deletion, export, customer self-service erasure; soft-delete and `updated_at`/audit trail.
 - **SEC-11:** keep `.env` out of git; single package manager + pinned lockfile + `drizzle-kit` update.

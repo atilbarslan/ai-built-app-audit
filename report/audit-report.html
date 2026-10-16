@@ -143,7 +143,7 @@
     <p class="where">Files: <code>drizzle/migrations/0001_audit_hardening.sql</code><br>Commit: <a href="https://github.com/atilbarslan/ai-built-app-audit/commit/408b033">408b033</a></p>
     <h3>How we verified it</h3>
     <p>Two tests in public-booking.test.ts (the per-phone cap and the per-salon burst) accepted the flood before and stop it after.</p>
-    <h3>What remains</h3><p>Per-visitor rate limiting and a CAPTCHA need a layer in front of the app (the booking call comes straight from the browser), and the AI features still need a per-user usage limit.</p>
+    <h3>What remains</h3><p>Per-visitor rate limiting and a CAPTCHA need a layer in front of the app (the booking call comes straight from the browser), and the AI features still need a per-user usage limit. The per-salon quota (10 bookings per minute) is shared by all visitors, so someone who keeps sending bookings can use it up and block real customers while the attack lasts; it limits fake records, not availability. Likewise, the per-phone limit (5 upcoming bookings) lets someone who knows a customer's phone number fill that customer's quota, because phone numbers are not verified (SEC-01). Both are why the recommended edge-layer controls (per-IP rate limiting, CAPTCHA) and OTP phone verification matter.</p>
     <div class="fnum">Finding 2 of 24</div>
   </section>
   <section class="page finding">
